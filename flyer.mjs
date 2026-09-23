@@ -14,8 +14,9 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const EVENT = { date: "10.2", dow: "金", issue: "18:00" };
 // スマホ版（GitHub Pages）。QR は assets/qr-app.svg（segno・誤り訂正 H）
 const APP_URL = "https://nirareba0.github.io/miacis-zine/";
-// 公式LINE の友だち追加 URL（未確認）。わかったら assets/qr-line.svg を作ってパスを書く
-const LINE_QR = null;
+// Miacis 公式LINE（@upq3510d）。Drive「公式LINEQRコード」の QR を読み取った URL から作り直した（segno・誤り訂正 H）
+const LINE_URL = "https://lin.ee/h6NuArv";
+const LINE_QR = "../assets/qr-line.svg";
 const PLACE = {
   name: "青少年育成プラザ Miacis",
   where: "韮崎市民交流センター NICORI 地下1階",
@@ -34,7 +35,7 @@ const CSS = `
   .a4{width:210mm;height:297mm;box-sizing:border-box;padding:8mm;display:flex;flex-direction:column;gap:4mm;overflow:hidden}
 
   /* 上: 見出しとスマホ */
-  .hero{position:relative;flex:none;height:134mm;background:var(--yellow);border-radius:4mm;padding:10mm 10mm 9mm;box-sizing:border-box;overflow:hidden}
+  .hero{position:relative;flex:none;height:124mm;background:var(--yellow);border-radius:4mm;padding:10mm 10mm 9mm;box-sizing:border-box;overflow:hidden}
   .kicker{font:700 10pt/1 var(--maru);letter-spacing:.14em;color:var(--blue)}
   h1{margin:5mm 0 0;font:800 34pt/1.22 var(--maru);letter-spacing:.01em}
   h1 .em{background:linear-gradient(transparent 60%,#fff 60%)}
@@ -46,14 +47,14 @@ const CSS = `
   .when .t{margin-top:3mm;display:inline-flex;align-items:baseline;gap:1.8mm;background:var(--ink);color:#fff;border-radius:2mm;padding:2.2mm 3.4mm;font:800 15pt/1 var(--maru)}
   .when .t small{font:700 9.5pt/1 var(--maru)}
   /* スマホ（アプリの実際の画面） */
-  .phone{position:absolute;right:12mm;top:9mm;width:55mm;height:116mm;box-sizing:border-box;padding:2mm;border-radius:9mm;background:var(--ink);
+  .phone{position:absolute;right:13mm;top:7mm;width:52mm;height:110mm;box-sizing:border-box;padding:2mm;border-radius:9mm;background:var(--ink);
          transform:rotate(5deg);box-shadow:0 1.2mm 0 .2mm rgba(32,48,71,.22)}
   .phone img{display:block;width:100%;height:100%;object-fit:cover;object-position:top;border-radius:7.2mm}
-  .sticker{position:absolute;right:57mm;top:84mm;z-index:2;transform:rotate(-8deg);background:#fff;border-radius:50%;width:27mm;height:27mm;
+  .sticker{position:absolute;right:54mm;top:78mm;z-index:2;transform:rotate(-8deg);background:#fff;border-radius:50%;width:27mm;height:27mm;
            display:grid;place-items:center;text-align:center;font:800 9pt/1.4 var(--maru);color:var(--blue);box-shadow:0 .8mm 0 rgba(32,48,71,.18)}
 
   /* 真ん中: QR が主役 */
-  .scan{flex:none;display:grid;grid-template-columns:60mm 1fr;gap:9mm;align-items:center;background:var(--blue);color:#fff;border-radius:4mm;padding:9mm 9mm 9mm 11mm}
+  .scan{flex:none;display:grid;grid-template-columns:56mm 1fr;gap:9mm;align-items:center;background:var(--blue);color:#fff;border-radius:4mm;padding:8mm 9mm 8mm 11mm}
   .qr{position:relative;background:#fff;border-radius:3mm;padding:4mm}
   .qr img{display:block;width:100%;height:auto}
   .qr::after{content:"";position:absolute;inset:-2.4mm;border:.6mm dashed rgba(255,255,255,.8);border-radius:4.6mm}
@@ -65,14 +66,15 @@ const CSS = `
   .flow small{display:block;font:500 7.4pt/1.5 var(--sans);opacity:.85}
 
   /* 下: 送っておいてもOK */
-  .line{flex:none;display:flex;align-items:center;gap:6mm;border:.4mm solid var(--line);border-radius:4mm;padding:6mm 7mm}
-  .line .badge{flex:none;width:22mm;height:22mm;border-radius:5mm;background:#06c755;color:#fff;display:grid;place-items:center;text-align:center;font:800 8.5pt/1.3 var(--maru)}
-  .line .badge img{width:100%;height:auto;background:#fff;border-radius:3mm;padding:1.5mm;box-sizing:border-box}
+  .line{flex:none;display:flex;align-items:center;gap:6mm;border:.4mm solid var(--line);border-radius:4mm;padding:4.5mm 7mm}
+  .line .badge{flex:none;width:27mm;box-sizing:border-box;border-radius:4mm;background:#06c755;color:#fff;padding:2mm 2mm 1.6mm;text-align:center;font:800 8pt/1.3 var(--maru)}
+  .line .badge img{display:block;width:100%;height:auto;background:#fff;border-radius:2.5mm;padding:2mm;box-sizing:border-box}
+  .line .badge span{display:block;margin-top:1.4mm;letter-spacing:.04em}
   .line h3{margin:0;font:800 12.5pt/1.45 var(--maru)}
   .line h3 em{font-style:normal;color:var(--blue)}
   .line p{margin-top:1.6mm;font-size:8.4pt;line-height:1.75;color:var(--muted)}
 
-  .foot{margin-top:auto;flex:none;display:flex;align-items:center;gap:5mm;padding:4mm 6mm;background:var(--pale);border-radius:3mm}
+  .foot{margin-top:auto;flex:none;display:flex;align-items:center;gap:5mm;padding:3.5mm 6mm;background:var(--pale);border-radius:3mm}
   .foot img{height:13mm}
   .foot .name{font:800 11pt/1.3 var(--maru)}
   .foot .sub{font-size:7.6pt;line-height:1.7;color:var(--muted)}
@@ -106,10 +108,10 @@ const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>
   </section>
 
   <section class="line">
-    <div class="badge">${LINE_QR ? `<img src="${LINE_QR}" alt="公式LINE の QR">` : "Miacis<br>公式<br>LINE"}</div>
+    <div class="badge">${LINE_QR ? `<img src="${LINE_QR}" alt="公式LINE の QR"><span>公式LINE</span>` : "Miacis<br>公式<br>LINE"}</div>
     <div>
       <h3>${EVENT.issue} までに、<em>公式LINE に送っておいてくれても OK</em></h3>
-      <p>送ってくれた ZINE は ${EVENT.issue} から Miacis で発行します。<br>写真に、顔・名札・制服・学校名は入れないでね。</p>
+      <p>左の QR で Miacis の公式LINE を友だち追加して、できた ZINE の画像を送ってね。${EVENT.issue} から Miacis で発行します。<br>写真に、顔・名札・制服・学校名は入れないでね。</p>
     </div>
   </section>
 
