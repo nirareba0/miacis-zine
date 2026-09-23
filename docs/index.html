@@ -54,6 +54,14 @@
 
   .stage{background:var(--desk);border-radius:16px;padding:18px 16px 14px;display:flex;flex-direction:column;align-items:center;gap:10px}
   #pv{width:min(100%,300px);height:auto;aspect-ratio:74.25/105;display:block;border-radius:4px;box-shadow:0 1px 0 rgba(0,0,0,.06),0 10px 24px -12px rgba(20,35,60,.35);background:#fff}
+  #pv.adjusting{touch-action:none;cursor:grab;box-shadow:0 0 0 3px var(--accent),0 10px 24px -12px rgba(20,35,60,.35)}
+  #pv.adjusting:active{cursor:grabbing}
+  #pv.has-photo{cursor:pointer}
+  .adjust{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+  .adjust p{flex-basis:100%;margin:0;text-align:center;font-size:12.5px;font-weight:700;color:var(--accent)}
+  .adjust button{min-width:44px;min-height:44px;border:1px solid var(--line);background:var(--surface);border-radius:12px;font-size:18px;font-weight:700}
+  .adjust .done{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-size:15px;padding-inline:18px}
+  .adjust .reset{font-size:13px;padding-inline:12px}
   .stage-note{font-size:12px;color:var(--muted);text-align:center}
   .stage-note b{color:var(--ink)}
 
@@ -121,6 +129,13 @@
 
   <section class="stage">
     <canvas id="pv" width="600" height="848" aria-label="いま編集しているページ"></canvas>
+    <div class="adjust" id="adjust" hidden>
+      <p>指でドラッグして動かす・2本指で広げて拡大</p>
+      <button type="button" id="zoomOut" aria-label="小さくする">−</button>
+      <button type="button" id="zoomIn" aria-label="大きくする">＋</button>
+      <button type="button" class="reset" id="zoomReset">元に戻す</button>
+      <button type="button" class="done" id="adjustDone">できた</button>
+    </div>
     <p class="stage-note" id="stageNote"></p>
   </section>
 
@@ -360,11 +375,20 @@
     ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
-  function cover(ctx, im, x, y, w, h, posY) {
-    const s = Math.max(w / im.naturalWidth, h / im.naturalHeight);
+  // 写真の見せ方は 拡大率 photoZoom（1 = 枠いっぱい）と、見せる位置 photoX・photoY（0〜1）の3つだけで持つ。
+  // 画面の指の動きも A4 の書き出しもこの3つから同じ切り取りを作るので、見たとおりに刷れる
+  const ZMAX = 5;
+  function crop(im, w, h, p) {
+    const z = Math.min(ZMAX, Math.max(1, p.photoZoom ?? 1));
+    const s = Math.max(w / im.naturalWidth, h / im.naturalHeight) * z; // 元画像 1px が何 mm になるか
     const sw = w / s, sh = h / s;
-    ctx.drawImage(im, (im.naturalWidth - sw) / 2, (im.naturalHeight - sh) * posY, sw, sh, x, y, w, h);
+    return { s, sw, sh, sx: (im.naturalWidth - sw) * (p.photoX ?? 0.5), sy: (im.naturalHeight - sh) * (p.photoY ?? 0.5) };
   }
+  function cover(ctx, im, x, y, w, h, p) {
+    const c = crop(im, w, h, p);
+    ctx.drawImage(im, c.sx, c.sy, c.sw, c.sh, x, y, w, h);
+  }
+  let photoRect = null; // いま描いたページで写真が占める枠（mm）。タップの当たり判定に使う
 
   // ───────── 1ページを描く（画面のプレビューと A4 書き出しで同じ関数を使う）─────────
   // ctx は mm 単位にスケール済み。ghost=true のときだけ、空の欄に薄い案内を出す
@@ -389,7 +413,8 @@
 
     const kicker = y => { const t = show("kicker"); if (!t) return y; drawLines(ctx, [t], x0, y, { size: 6.5, lh: 1.4, color: col("kicker") || accent, weight: 700 }); return y + 6.5 * PT * 1.4; };
     const photoBox = (x, y, w, h, r) => {
-      if (img) { ctx.save(); rr(ctx, x, y, w, h, r); ctx.clip(); cover(ctx, img, x, y, w, h, p.photoY ?? 0.5); ctx.restore(); }
+      photoRect = { x, y, w, h };
+      if (img) { ctx.save(); rr(ctx, x, y, w, h, r); ctx.clip(); cover(ctx, img, x, y, w, h, p); ctx.restore(); }
       else if (ghost) {
         ctx.save(); rr(ctx, x, y, w, h, r); ctx.fillStyle = C.dark ? "rgba(255,255,255,.12)" : "rgba(36,79,199,.07)"; ctx.fill();
         ctx.setLineDash([1.2, 1]); ctx.lineWidth = 0.3; ctx.strokeStyle = hintC; ctx.stroke(); ctx.restore();
@@ -542,8 +567,21 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const k = canvas.width / PW;
     ctx.setTransform(k, 0, 0, k, 0, 0);
+    photoRect = null;
     drawPage(ctx, p, n, img, ghost);
+    if (canvas === pv) {
+      pvState = { rect: photoRect, img };
+      pv.classList.toggle("has-photo", !!(img && photoRect));
+      // 調整中は写真の枠を点線で示す（プレビューだけ。書き出しには出ない）
+      if (adjusting && photoRect) {
+        const r = photoRect;
+        ctx.save(); ctx.setLineDash([1.4, 1]); ctx.lineWidth = 0.45; ctx.strokeStyle = "#244fc7";
+        ctx.strokeRect(r.x + 0.25, r.y + 0.25, r.w - 0.5, r.h - 0.5); ctx.restore();
+      }
+    }
   }
+  let pvState = { rect: null, img: null };
+  let adjusting = false;
 
   // ───────── A4 に面付け（300dpi）─────────
   async function makeSheet() {
@@ -618,6 +656,7 @@
   };
 
   function select(n) {
+    setAdjust(false, true);
     state.current = n;
     for (const k in thumbs) thumbs[k].b.setAttribute("aria-current", String(+k === n));
     thumbs[n].b.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
@@ -669,7 +708,7 @@
         inp.addEventListener("change", async () => {
           const file = inp.files?.[0]; if (!file) return;
           fb.firstChild.textContent = "読み込み中…";
-          try { p.photo = await readPhoto(file); p.photoY = 0.5; touched(); }
+          try { p.photo = await readPhoto(file); p.photoX = 0.5; p.photoY = 0.5; p.photoZoom = 1; touched(); }
           catch (e) { fb.firstChild.textContent = e.message; return; }
           buildEditor(); redraw(); persist();
         });
@@ -679,13 +718,13 @@
           rm.addEventListener("click", () => { p.photo = null; touched(); buildEditor(); redraw(); persist(); });
           row.append(rm);
         }
-        wrapEl.append(row);
         if (p.photo) {
-          const rl = document.createElement("label"); rl.htmlFor = "f-photoY"; rl.textContent = "写真の見せる位置（上 ↔ 下）"; rl.style.marginTop = "8px";
-          const r = document.createElement("input"); r.type = "range"; r.className = "range"; r.id = "f-photoY"; r.min = 0; r.max = 1; r.step = 0.01; r.value = p.photoY ?? 0.5;
-          r.addEventListener("input", () => { p.photoY = +r.value; touched(); redraw(); persist(); });
-          wrapEl.append(rl, r);
-        }
+          const mv = document.createElement("button"); mv.type = "button"; mv.className = "ghost-btn"; mv.textContent = "大きさ・位置を変える";
+          mv.addEventListener("click", () => { setAdjust(true); pv.scrollIntoView({ block: "center", behavior: "smooth" }); });
+          row.append(mv);
+          const hint = document.createElement("p"); hint.className = "hint"; hint.style.margin = "4px 0 0"; hint.textContent = "上のページの写真をタップしても変えられます。";
+          wrapEl.append(row, hint);
+        } else wrapEl.append(row);
       } else {
         const multi = key === "body" || key === "title" || (key === "foot" && p.layout === "back");
         const inp = document.createElement(multi ? "textarea" : "input");
@@ -751,6 +790,107 @@
   $("savePng").addEventListener("click", () => lastPng && saveBlob(lastPng, `zine-${stamp()}.png`));
   $("savePdf").addEventListener("click", () => lastPdf && saveBlob(lastPdf, `zine-${stamp()}.pdf`));
   $("back").addEventListener("click", () => { $("result").hidden = true; });
+
+  // ───────── 写真をさわって動かす・拡大する ─────────
+  const pointers = new Map();
+  let gesture = null;
+  let fastQueued = false;
+  const fastDraw = () => {
+    // 動かしている最中はプレビューだけ描き直す（サムネイルは指を離してから）
+    if (fastQueued) return; fastQueued = true;
+    requestAnimationFrame(() => { fastQueued = false; drawing = drawing.then(() => renderPageTo(pv, state.current, true)); });
+  };
+  function setAdjust(on, quiet) {
+    const p = state.pages[state.current];
+    adjusting = !!(on && p?.photo);
+    pv.classList.toggle("adjusting", adjusting);
+    $("adjust").hidden = !adjusting;
+    pointers.clear(); gesture = null;
+    if (!quiet) redraw();
+  }
+  const toMm = e => { const b = pv.getBoundingClientRect(); return { x: (e.clientX - b.left) / b.width * PW, y: (e.clientY - b.top) / b.height * PH }; };
+  const inPhoto = m => { const r = pvState.rect; return r && m.x >= r.x && m.x <= r.x + r.w && m.y >= r.y && m.y <= r.y + r.h; };
+  const clamp01 = v => Math.min(1, Math.max(0, v));
+  // 画面上で dx, dy（mm）動かした分だけ、写真の中身も同じ量だけ動かす
+  function pan(p, dx, dy) {
+    const { img, rect } = pvState; if (!img || !rect) return;
+    const c = crop(img, rect.w, rect.h, p);
+    const freeX = img.naturalWidth - c.sw, freeY = img.naturalHeight - c.sh;
+    if (freeX > 0.5) p.photoX = clamp01((p.photoX ?? 0.5) - dx / c.s / freeX);
+    if (freeY > 0.5) p.photoY = clamp01((p.photoY ?? 0.5) - dy / c.s / freeY);
+  }
+  // 指の中心 (fx, fy) の下にある点が動かないように拡大率を変える
+  function zoomAt(p, factor, fx, fy) {
+    const { img, rect } = pvState; if (!img || !rect) return;
+    const before = crop(img, rect.w, rect.h, p);
+    const u = before.sx + (fx - rect.x) / before.s, v = before.sy + (fy - rect.y) / before.s;
+    p.photoZoom = Math.min(ZMAX, Math.max(1, (p.photoZoom ?? 1) * factor));
+    const after = crop(img, rect.w, rect.h, p);
+    const freeX = img.naturalWidth - after.sw, freeY = img.naturalHeight - after.sh;
+    p.photoX = freeX > 0.5 ? clamp01((u - (fx - rect.x) / after.s) / freeX) : 0.5;
+    p.photoY = freeY > 0.5 ? clamp01((v - (fy - rect.y) / after.s) / freeY) : 0.5;
+  }
+  const spanOf = () => { const [a, b] = [...pointers.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; };
+
+  pv.addEventListener("pointerdown", e => {
+    const m = toMm(e);
+    if (!adjusting) {
+      // 写真をタップしたら調整モードへ（スクロールのためのドラッグと区別する）
+      gesture = pvState.img && inPhoto(m) ? { tap: true, x: e.clientX, y: e.clientY } : null;
+      return;
+    }
+    e.preventDefault();
+    try { pv.setPointerCapture(e.pointerId); } catch (_) {}
+    pointers.set(e.pointerId, m);
+    gesture = pointers.size === 2 ? { pinch: spanOf() } : { last: m };
+  });
+  pv.addEventListener("pointermove", e => {
+    if (!adjusting || !pointers.has(e.pointerId)) return;
+    e.preventDefault();
+    const p = state.pages[state.current];
+    const m = toMm(e);
+    pointers.set(e.pointerId, m);
+    if (pointers.size === 1 && gesture?.last) {
+      pan(p, m.x - gesture.last.x, m.y - gesture.last.y);
+      gesture.last = m;
+    } else if (pointers.size === 2 && gesture?.pinch) {
+      const now = spanOf(), prev = gesture.pinch;
+      if (prev.d > 0.5) zoomAt(p, now.d / prev.d, now.cx, now.cy);
+      pan(p, now.cx - prev.cx, now.cy - prev.cy);
+      gesture.pinch = now;
+    }
+    touched(); fastDraw();
+  });
+  const endPointer = e => {
+    if (!adjusting) {
+      if (gesture?.tap && Math.hypot(e.clientX - gesture.x, e.clientY - gesture.y) < 10) setAdjust(true);
+      gesture = null; return;
+    }
+    if (!pointers.has(e.pointerId)) return;
+    pointers.delete(e.pointerId);
+    // 2本指から1本に減ったら、残った指でそのままドラッグを続けられるようにする
+    gesture = pointers.size === 1 ? { last: [...pointers.values()][0] } : null;
+    if (!pointers.size) { redraw(); persist(); }
+  };
+  pv.addEventListener("pointerup", endPointer);
+  pv.addEventListener("pointercancel", endPointer);
+  pv.addEventListener("wheel", e => {
+    if (!adjusting) return;
+    e.preventDefault();
+    const m = toMm(e);
+    zoomAt(state.pages[state.current], Math.exp(-e.deltaY / 400), m.x, m.y);
+    touched(); fastDraw(); persist();
+  }, { passive: false });
+  const stepZoom = f => {
+    const r = pvState.rect; if (!r) return;
+    zoomAt(state.pages[state.current], f, r.x + r.w / 2, r.y + r.h / 2);
+    touched(); redraw(); persist();
+  };
+  $("zoomIn").addEventListener("click", () => stepZoom(1.25));
+  $("zoomOut").addEventListener("click", () => stepZoom(1 / 1.25));
+  $("zoomReset").addEventListener("click", () => { Object.assign(state.pages[state.current], { photoX: 0.5, photoY: 0.5, photoZoom: 1 }); touched(); redraw(); persist(); });
+  $("adjustDone").addEventListener("click", () => setAdjust(false));
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && adjusting) setAdjust(false); });
 
   $("prev").addEventListener("click", () => select(Math.max(1, state.current - 1)));
   $("next").addEventListener("click", () => select(Math.min(8, state.current + 1)));
