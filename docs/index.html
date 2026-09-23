@@ -99,6 +99,13 @@
   .actions{display:flex;flex-wrap:wrap;gap:8px}
   .actions .primary{flex:1 1 160px}
   .secondary{flex:1 1 160px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-weight:700;padding:14px 12px}
+  .modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  .modes label{display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px;cursor:pointer}
+  .modes input{position:absolute;opacity:0;pointer-events:none}
+  .modes b{font:700 14px/1.3 var(--maru)}
+  .modes span{font-size:12px;line-height:1.5;color:var(--muted)}
+  .modes label:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+  .modes label:has(input:focus-visible){outline:2.5px solid var(--accent);outline-offset:2px}
   .steps{margin:14px 0 0;padding-left:1.4em;display:flex;flex-direction:column;gap:6px}
   .notice{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:13px}
   .status{min-height:1.4em;font-size:13px;color:var(--muted);margin-top:8px}
@@ -166,6 +173,11 @@
     <button class="ghost-btn" id="back" type="button">‹ 編集にもどる</button>
     <h2>できあがり</h2>
     <p class="hint">この1枚を印刷して、折って、真ん中を1本切ると本になります。</p>
+    <fieldset class="modes" id="printMode" style="border:0;padding:0;margin-inline:0">
+      <legend class="hint" style="padding:0;margin-bottom:6px">刷り方をえらぶ</legend>
+      <label><input type="radio" name="printMode" value="all" checked><b>文字も写真も刷る</b><span>アプリで書いたとおりに刷る</span></label>
+      <label><input type="radio" name="printMode" value="photo"><b>写真だけ刷る</b><span>文字は、刷ったあとに手で書く</span></label>
+    </fieldset>
     <img class="result-img" id="resultImg" alt="8ページを並べたA4の画像">
     <div class="actions">
       <button class="primary" id="savePdf" type="button">PDF を保存</button>
@@ -218,6 +230,7 @@
     list:      { label: "リスト",     fields: { kicker: "小見出し", title: "見出し", body: "1行に1つずつ", foot: "下の一行" } },
     write:     { label: "書き込み欄", fields: { kicker: "小見出し", title: "問いかけ", foot: "線のあとのことば", body: "小さな注意書き" } },
     back:      { label: "裏表紙",     fields: { kicker: "小見出し", body: "この本について", foot: "作った日・作った人・場所（改行できる）" } },
+    blank:     { label: "白紙（手書き）", fields: {} },
   };
   const ROLE = { 1: "表紙", 2: "見開き① の左", 3: "見開き① の右", 4: "見開き② の左", 5: "見開き② の右", 6: "見開き③ の左", 7: "見開き③ の右", 8: "裏表紙" };
 
@@ -539,6 +552,11 @@
         nombre();
         break;
       }
+      case "blank": {
+        if (ghost) drawLines(ctx, ["ここは手で書くページ"], cx, cy + ch / 2 - 2.5, { size: 7, lh: 1.4, color: hintC, weight: 700, align: "center", maxW: cw });
+        nombre();
+        break;
+      }
       case "back": {
         let y = kicker(y0 + 1) + 3;
         const f = show("foot", "作った日\nつくった人：");
@@ -559,8 +577,11 @@
     ctx.restore();
   }
 
-  async function renderPageTo(canvas, n, ghost) {
-    const p = state.pages[n];
+  // 「写真だけ刷る」: 文字を抜き、濃い地色は白にして（手で書けるように）写真と線だけ残す
+  const photoOnlyOf = p => ({ ...p, kicker: "", title: "", body: "", foot: "", bg: colorOf(p.bg).dark ? "white" : p.bg });
+
+  async function renderPageTo(canvas, n, ghost, photoOnly = false) {
+    const p = photoOnly ? photoOnlyOf(state.pages[n]) : state.pages[n];
     const img = await loadImg(p.photo);
     const ctx = canvas.getContext("2d");
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -584,7 +605,7 @@
   let adjusting = false;
 
   // ───────── A4 に面付け（300dpi）─────────
-  async function makeSheet() {
+  async function makeSheet(photoOnly = false) {
     await ensureFonts(allText());
     const K = 3508 / 297; // px per mm
     const sheet = document.createElement("canvas");
@@ -594,7 +615,7 @@
     const pageC = document.createElement("canvas");
     pageC.width = Math.round(PW * K); pageC.height = Math.round(PH * K);
     const place = async (n, col, row, flip) => {
-      await renderPageTo(pageC, n, false);
+      await renderPageTo(pageC, n, false, photoOnly);
       const x = col * PW * K, y = row * PH * K, w = PW * K, h = PH * K;
       s.save();
       if (flip) { s.translate(x + w, y + h); s.rotate(Math.PI); s.drawImage(pageC, 0, 0, w, h); }
@@ -696,6 +717,11 @@
     // 欄
     const f = $("fields"); f.innerHTML = "";
     const h = document.createElement("h2"); h.textContent = "なかみ"; f.append(h);
+    if (!Object.keys(L.fields).length) {
+      const note = document.createElement("p"); note.className = "hint"; note.style.margin = "0";
+      note.textContent = "このページは白紙で刷られます。刷ったあとに、手で書いたり描いたりしてください。";
+      f.append(note);
+    }
     for (const [key, label] of Object.entries(L.fields)) {
       const wrapEl = document.createElement("div"); wrapEl.className = "field";
       const id = `f-${key}`;
@@ -768,10 +794,11 @@
     } catch (_) { status("この画面では保存ボタンが使えません。上の画像を長押しして保存してください。"); }
   }
 
-  $("make").addEventListener("click", async () => {
-    const btn = $("make"); btn.disabled = true; btn.textContent = "つくっています…";
-    try {
-      const sheet = await makeSheet();
+  const printMode = () => document.querySelector('input[name="printMode"]:checked')?.value || "all";
+  async function buildSheet() {
+    const photoOnly = printMode() === "photo";
+    {
+      const sheet = await makeSheet(photoOnly);
       lastPng = await new Promise(r => sheet.toBlob(r, "image/png"));
       if (lastUrl) URL.revokeObjectURL(lastUrl);
       lastUrl = URL.createObjectURL(lastPng);
@@ -784,8 +811,17 @@
       }
       $("savePdf").disabled = !lastPdf;
       status(lastPdf ? "" : "PDF の部品が読み込めなかったので、画像だけ作りました。");
-      $("result").hidden = false; $("result").scrollTop = 0;
-    } finally { btn.disabled = false; btn.textContent = "A4 にする"; }
+    }
+  }
+  $("make").addEventListener("click", async () => {
+    const btn = $("make"); btn.disabled = true; btn.textContent = "つくっています…";
+    try { await buildSheet(); $("result").hidden = false; $("result").scrollTop = 0; }
+    finally { btn.disabled = false; btn.textContent = "A4 にする"; }
+  });
+  $("printMode").addEventListener("change", async () => {
+    status("つくりなおしています…");
+    await buildSheet();
+    if (!$("status").textContent.startsWith("PDF")) status(printMode() === "photo" ? "写真だけの版にしました。刷ったら、文字を手で書いてください。" : "");
   });
   $("savePng").addEventListener("click", () => lastPng && saveBlob(lastPng, `zine-${stamp()}.png`));
   $("savePdf").addEventListener("click", () => lastPdf && saveBlob(lastPdf, `zine-${stamp()}.pdf`));

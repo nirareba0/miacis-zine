@@ -22,3 +22,9 @@ node build.mjs   # out/ に PNG（A4 横・300dpi）・PDF・HTML を書き出�
 
 `docs/index.html` 1ファイル＋`docs/sample/`（GitHub Pages が docs/ を公開する）。ビルド不要。ローカルでは `cd docs && python3 -m http.server` で開く（file:// だと canvas の書き出しが止まる）。
 claude.ai 上では downloads 機能で保存し、ふつうの Web 公開では共有メニューかダウンロードで保存する。
+
+## 当日の説明用シート・チラシ案 B
+
+- `node guide.mjs` → `out/guide-20261002.*`（作り方3通り・8ページの並び・折り方・決まり・18:00 発行）
+- `node flyer.mjs b` → `out/flyer-20261002-b.*`（集客用チラシの「手書きも同格」案。`node flyer.mjs` は A 案）
+- 手書き用の台紙は `node build.mjs` → `out/zine-blank.pdf`

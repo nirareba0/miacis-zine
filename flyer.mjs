@@ -10,6 +10,19 @@ const here = dirname(fileURLToPath(import.meta.url));
 const out = resolve(here, "out");
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
+// 案 A（スマホ推し）/ 案 B（手書きも同格に入れる）。 node flyer.mjs b で B を書き出す
+const VARIANT = process.argv[2] === "b" ? "b" : "a";
+const COPY = {
+  a: { h1: "スマホで、<br>自分だけの<br><span class=\"em\">本</span>をつくろう。", lede: "写真と文字を入れるだけで、<br>A4 1枚・8ページの本（ZINE）になる。",
+       sticker: "アプリの<br>インストール<br>いらない",
+       lineH: (t) => `${t} までに、<em>公式LINE に送っておいてくれても OK</em>`,
+       lineP: (t) => `左の QR で Miacis の公式LINE を友だち追加して、できた ZINE の画像を送ってね。${t} から Miacis で発行します。<br>写真に、顔・名札・制服・学校名は入れないでね。` },
+  b: { h1: "自分だけの<br><span class=\"em\">本</span>を<br>つくろう。", lede: "スマホでも、紙に手書きでも。<br>A4 1枚・8ページの本（ZINE）になる。",
+       sticker: "スマホが<br>なくても<br>OK",
+       lineH: (t) => `${t} までに、<em>公式LINE かスタッフに渡してね</em>`,
+       lineP: (t) => `スマホがなくても大丈夫。Miacis で台紙をもらって、紙に手書きで作れます。写真だけアプリで並べて、文字は手で書くこともできます。${t} から Miacis で発行。<br>写真に、顔・名札・制服・学校名は入れないでね。` },
+}[VARIANT];
+
 // ── イベントの中身。ここだけ直せば刷り直せる ──
 const EVENT = { date: "10.2", dow: "金", issue: "18:00" };
 // スマホ版（GitHub Pages）。QR は assets/qr-app.svg（segno・誤り訂正 H）
@@ -84,14 +97,14 @@ const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>
 <div class="a4">
   <section class="hero">
     <div class="kicker">Miacis ZINE の日</div>
-    <h1>スマホで、<br>自分だけの<br><span class="em">本</span>をつくろう。</h1>
-    <p class="lede">写真と文字を入れるだけで、<br>A4 1枚・8ページの本（ZINE）になる。</p>
+    <h1>${COPY.h1}</h1>
+    <p class="lede">${COPY.lede}</p>
     <div class="when">
       <div class="d"><b>${EVENT.date}</b><span class="dow">${EVENT.dow}</span></div>
       <div class="t">${EVENT.issue}<small>から発行</small></div>
     </div>
     <div class="phone"><img src="../assets/flyer-app.png" alt="スマホ版の画面"></div>
-    <div class="sticker">アプリの<br>インストール<br>いらない</div>
+    <div class="sticker">${COPY.sticker}</div>
   </section>
 
   <section class="scan">
@@ -110,8 +123,8 @@ const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>
   <section class="line">
     <div class="badge">${LINE_QR ? `<img src="${LINE_QR}" alt="公式LINE の QR"><span>公式LINE</span>` : "Miacis<br>公式<br>LINE"}</div>
     <div>
-      <h3>${EVENT.issue} までに、<em>公式LINE に送っておいてくれても OK</em></h3>
-      <p>左の QR で Miacis の公式LINE を友だち追加して、できた ZINE の画像を送ってね。${EVENT.issue} から Miacis で発行します。<br>写真に、顔・名札・制服・学校名は入れないでね。</p>
+      <h3>${COPY.lineH(EVENT.issue)}</h3>
+      <p>${COPY.lineP(EVENT.issue)}</p>
     </div>
   </section>
 
@@ -121,10 +134,11 @@ const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>
   </footer>
 </div></body></html>`;
 
-const file = resolve(out, "flyer-20261002.html");
+const NAME = VARIANT === "b" ? "flyer-20261002-b" : "flyer-20261002";
+const file = resolve(out, `${NAME}.html`);
 writeFileSync(file, html);
 execFileSync(CHROME, ["--headless", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=3.125",
-  "--window-size=794,1123", `--screenshot=${resolve(out, "flyer-20261002.png")}`, `file://${file}`], { stdio: "ignore" });
+  "--window-size=794,1123", `--screenshot=${resolve(out, `${NAME}.png`)}`, `file://${file}`], { stdio: "ignore" });
 execFileSync(CHROME, ["--headless", "--disable-gpu", "--no-pdf-header-footer",
-  `--print-to-pdf=${resolve(out, "flyer-20261002.pdf")}`, `file://${file}`], { stdio: "ignore" });
-console.log("built flyer-20261002");
+  `--print-to-pdf=${resolve(out, `${NAME}.pdf`)}`, `file://${file}`], { stdio: "ignore" });
+console.log("built", NAME);
