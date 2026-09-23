@@ -26,6 +26,8 @@ const PLACE = {
   tel: "0551-45-9919",
   hours: "開館 平日 15:00–21:30 ／ 土日祝 9:30–21:30　休館 毎週火曜・第3月曜",
 };
+// スマホ版（GitHub Pages）。QR は assets/qr-app.svg（segno・誤り訂正 H）
+const APP_URL = "https://nirareba0.github.io/miacis-zine/";
 const IDEAS = ["好きなもの図鑑", "推しの本", "今日の日記", "問いの本", "マンガ", "ひみつの地図"];
 
 const pg = n => `pages/zine-toi-corner-000-p${n}.png`;
@@ -50,9 +52,9 @@ const CSS = `
   p{margin:0}
   .phrase{word-break:auto-phrase;line-break:strict;text-wrap:pretty}
   /* 紙の端 8mm は刷らない前提で、色面は内側のカードに置く（ZINE と同じ考え方） */
-  .a4{width:210mm;height:297mm;box-sizing:border-box;padding:8mm;display:flex;flex-direction:column;gap:5mm}
+  .a4{width:210mm;height:297mm;box-sizing:border-box;padding:8mm;display:flex;flex-direction:column;gap:4mm;overflow:hidden}
 
-  .hero{position:relative;background:var(--yellow);border-radius:4mm;padding:11mm 10mm 9mm;height:128mm;box-sizing:border-box;overflow:hidden}
+  .hero{position:relative;flex:none;background:var(--yellow);border-radius:4mm;padding:10mm 10mm 8mm;height:121mm;box-sizing:border-box;overflow:hidden}
   .kicker{font:700 10pt/1 var(--maru);letter-spacing:.14em;color:var(--blue)}
   h1{margin:4mm 0 0;font:800 40pt/1.18 var(--maru);letter-spacing:.01em}
   h1 em{font-style:normal;background:linear-gradient(transparent 62%,#fff 62%)}
@@ -61,16 +63,16 @@ const CSS = `
   .date b{font:800 46pt/1 var(--maru);letter-spacing:-.01em}
   .date span{font:800 15pt/1 var(--maru);background:var(--ink);color:#fff;border-radius:50%;width:10.5mm;height:10.5mm;display:grid;place-items:center}
   /* 作例: 実物のページをずらして重ねる */
-  .zines{position:absolute;right:7mm;top:14mm;width:82mm;height:108mm}
+  .zines{position:absolute;right:7mm;top:10mm;width:82mm;height:106mm}
   .zines img{position:absolute;width:38mm;border-radius:1.8mm;box-shadow:0 0 0 .5mm #fff,0 .6mm 0 .8mm rgba(32,48,71,.18)}
   .zines .a{left:42mm;top:0;transform:rotate(6deg);z-index:3}
   .zines .b{left:4mm;top:8mm;transform:rotate(-5deg);z-index:2}
   .zines .c{left:24mm;top:47mm;transform:rotate(3deg);z-index:4}
   .zines .tag{position:absolute;right:0;bottom:12mm;z-index:5;font-size:7pt;line-height:1.5;background:#fff;padding:1.4mm 2.4mm;border-radius:1.5mm;font-weight:600}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:5mm}
-  .card{border:.35mm solid var(--line);border-radius:3mm;padding:6mm 6mm 5.5mm}
-  .card h2{margin:0 0 3.5mm;font:800 12pt/1.3 var(--maru);color:var(--blue)}
-  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm}
+  .card{border:.35mm solid var(--line);border-radius:3mm;padding:5mm 6mm 4.5mm}
+  .card h2{margin:0 0 3mm;font:800 12pt/1.3 var(--maru);color:var(--blue)}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:6mm;padding-inline:3mm}
   .step{text-align:center}
   .step svg{width:100%;height:auto;display:block}
   .step p{margin-top:2mm;font-size:7.4pt;line-height:1.5;font-weight:600}
@@ -82,10 +84,16 @@ const CSS = `
   dt{font-weight:800;color:var(--blue);font-family:var(--maru)}
   dd{margin:0;font-weight:600}
 
-  .foot{margin-top:auto;display:flex;align-items:center;gap:5mm;padding:4.5mm 6mm;background:var(--pale);border-radius:3mm}
+  .foot{margin-top:auto;flex:none;display:flex;align-items:center;gap:5mm;padding:3.5mm 5mm 3.5mm 6mm;background:var(--pale);border-radius:3mm}
   .foot img{height:13mm}
   .foot .name{font:800 11pt/1.3 var(--maru)}
   .foot .sub{font-size:7.6pt;line-height:1.7;color:var(--muted)}
+  .foot .place{flex:1;min-width:0}
+  .app{display:flex;align-items:center;gap:3.5mm;padding-left:5mm;border-left:.3mm solid var(--line)}
+  .app .qr{flex:none;background:#fff;padding:1.8mm;border-radius:1.5mm}
+  .app .qr img{display:block;width:21mm;height:21mm}
+  .app b{display:block;font:800 10pt/1.35 var(--maru);color:var(--blue)}
+  .app p{font-size:7pt;line-height:1.6;color:var(--muted)}
 `;
 
 const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>自分だけの本を作ってみよう！ 10.2</title><style>${CSS}</style></head><body>
@@ -125,7 +133,8 @@ const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>
 
   <footer class="foot">
     <img src="../assets/miacis-logo.png" alt="Miacis">
-    <div><p class="name">${PLACE.name}</p><p class="sub">${PLACE.where} ／ TEL ${PLACE.tel}<br>${PLACE.hours}</p></div>
+    <div class="place"><p class="name">${PLACE.name}</p><p class="sub">${PLACE.where} ／ TEL ${PLACE.tel}<br>${PLACE.hours.replace("　", "<br>")}</p></div>
+    <div class="app"><div class="qr"><img src="../assets/qr-app.svg" alt="スマホ版のQR"></div><div><b>スマホでも<br>作れる</b><p>写真を入れて<br>A4にして印刷</p></div></div>
   </footer>
 </div></body></html>`;
 
