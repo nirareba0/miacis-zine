@@ -1,0 +1,772 @@
+<title>まいにちZINE</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<style>
+  :root{
+    --ground:#eef3fa; --surface:#ffffff; --surface-2:#f5f8fd; --ink:#203047; --muted:#5a6a80;
+    --line:#d4e3f5; --accent:#244fc7; --accent-ink:#ffffff; --accent-soft:#e3ebfd;
+    --yellow:#ffe680; --desk:#dfe7f2; --danger:#c83232;
+    --maru:"Zen Maru Gothic","Hiragino Maru Gothic ProN","BIZ UDPGothic",sans-serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --ground:#10151f; --surface:#182131; --surface-2:#1f2a3d; --ink:#e7edf7; --muted:#9fb0c7;
+      --line:#2c3a52; --accent:#8fb0ff; --accent-ink:#0f1a33; --accent-soft:#233257; --desk:#0b1019; --danger:#ff8a8a;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#10151f; --surface:#182131; --surface-2:#1f2a3d; --ink:#e7edf7; --muted:#9fb0c7;
+    --line:#2c3a52; --accent:#8fb0ff; --accent-ink:#0f1a33; --accent-soft:#233257; --desk:#0b1019; --danger:#ff8a8a;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+  button,input,textarea,select{font:inherit;color:inherit}
+  button{cursor:pointer}
+  :focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+  .wrap{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:0 128px}
+
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px 8px}
+  .brand{font:900 20px/1.1 var(--maru);letter-spacing:.02em}
+  .brand small{display:block;font:500 11px/1.4 var(--sans);color:var(--muted);letter-spacing:.04em;margin-top:3px}
+  .menu{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .ghost-btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600}
+  .sample-chip{display:inline-block;margin-left:6px;font:700 11px/1 var(--sans);padding:4px 7px;border-radius:999px;background:var(--yellow);color:#203047;vertical-align:2px}
+
+  /* ページの並び: 表紙｜2-3｜4-5｜6-7｜裏表紙 */
+  .strip{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--ground);padding-block:8px 10px;
+         display:flex;gap:10px;overflow-x:auto;scrollbar-width:none}
+  .strip::-webkit-scrollbar{display:none}
+  .spread{display:flex;gap:2px;flex:none}
+  .thumb{position:relative;border:0;padding:0;background:none;border-radius:4px;flex:none}
+  .thumb canvas{display:block;width:40px;height:auto;aspect-ratio:74.25/105;border-radius:3px;box-shadow:0 0 0 1px var(--line)}
+  .thumb span{position:absolute;left:0;right:0;bottom:-15px;text-align:center;font:700 10px/1 var(--sans);color:var(--muted)}
+  .thumb[aria-current="true"] canvas{box-shadow:0 0 0 2.5px var(--accent)}
+  .thumb[aria-current="true"] span{color:var(--accent)}
+  .strip{padding-bottom:22px}
+
+  .stage{background:var(--desk);border-radius:16px;padding:18px 16px 14px;display:flex;flex-direction:column;align-items:center;gap:10px}
+  #pv{width:min(100%,300px);height:auto;aspect-ratio:74.25/105;display:block;border-radius:4px;box-shadow:0 1px 0 rgba(0,0,0,.06),0 10px 24px -12px rgba(20,35,60,.35);background:#fff}
+  .stage-note{font-size:12px;color:var(--muted);text-align:center}
+  .stage-note b{color:var(--ink)}
+
+  .editor{margin-top:14px;display:flex;flex-direction:column;gap:14px}
+  .group{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .group h2{margin:0 0 10px;font:700 13px/1.3 var(--maru);letter-spacing:.06em;color:var(--muted)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:600}
+  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .swatches{display:flex;gap:10px;flex-wrap:wrap}
+  .sw{width:34px;height:34px;border-radius:50%;border:1px solid rgba(32,48,71,.2);padding:0}
+  .sw[aria-pressed="true"]{box-shadow:0 0 0 2.5px var(--surface),0 0 0 5px var(--accent)}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field + .field{margin-top:12px}
+  .field label{font-size:12.5px;font-weight:700;color:var(--muted)}
+  .field input[type=text],.field textarea{width:100%;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:16px;line-height:1.55}
+  .field textarea{min-height:92px;resize:vertical}
+  .photo-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .file-btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:6px;border-radius:10px;padding:10px 14px;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:14px}
+  .file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .range{width:100%}
+  .hint{font-size:12px;color:var(--muted);line-height:1.6}
+
+  .bar{position:fixed;left:0;right:0;bottom:0;z-index:10;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px);
+       border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+  .bar-in{max-width:560px;margin:0 auto;display:flex;gap:8px}
+  .nav{flex:none;width:48px;border:1px solid var(--line);background:var(--surface-2);border-radius:12px;font-size:18px;font-weight:700}
+  .nav:disabled{opacity:.35}
+  .primary{flex:1;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font:900 16px/1 var(--maru);padding:15px 12px;letter-spacing:.04em}
+
+  .sheet-view{position:fixed;inset:0;z-index:20;background:var(--ground);overflow-y:auto}
+  .sheet-view .wrap{padding-block:16px 40px}
+  .sheet-view h2{font:900 20px/1.3 var(--maru);margin:6px 0 4px}
+  .result-img{display:block;width:100%;height:auto;border-radius:6px;box-shadow:0 0 0 1px var(--line);background:#fff;margin-block:12px}
+  .actions{display:flex;flex-wrap:wrap;gap:8px}
+  .actions .primary{flex:1 1 160px}
+  .secondary{flex:1 1 160px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-weight:700;padding:14px 12px}
+  .steps{margin:14px 0 0;padding-left:1.4em;display:flex;flex-direction:column;gap:6px}
+  .notice{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:13px}
+  .status{min-height:1.4em;font-size:13px;color:var(--muted);margin-top:8px}
+
+  .confirm{margin-top:10px;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--danger);display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+  .confirm p{margin:0;flex:1 1 200px}
+  .confirm button{border-radius:10px;padding:8px 12px;font-weight:700;border:1px solid var(--line);background:var(--surface-2)}
+  .confirm .danger{background:var(--danger);border-color:var(--danger);color:#fff}
+  @media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">まいにちZINE<span id="sampleChip" class="sample-chip" hidden>作例</span><small>A4 1枚・8ページの本をつくる</small></div>
+    <div class="menu">
+      <button class="ghost-btn" id="btnSample" type="button">作例を見る</button>
+      <button class="ghost-btn" id="btnNew" type="button">まっさらから</button>
+    </div>
+  </header>
+  <div id="confirmNew" class="confirm" hidden>
+    <p>いま作っている8ページを消して、まっさらにします。</p>
+    <button type="button" id="confirmNo">やめる</button>
+    <button type="button" class="danger" id="confirmYes">消してはじめる</button>
+  </div>
+
+  <nav class="strip" id="strip" aria-label="ページ"></nav>
+
+  <section class="stage">
+    <canvas id="pv" width="600" height="848" aria-label="いま編集しているページ"></canvas>
+    <p class="stage-note" id="stageNote"></p>
+  </section>
+
+  <section class="editor">
+    <div class="group">
+      <h2>かたち</h2>
+      <div class="chips" id="layouts"></div>
+    </div>
+    <div class="group">
+      <h2>いろ</h2>
+      <div class="swatches" id="colors"></div>
+    </div>
+    <div class="group" id="fields"></div>
+    <p class="hint">写真はこの端末の中だけで使います。どこにも送りません。顔・名札・制服・学校名は写さないでね。</p>
+  </section>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <button class="nav" id="prev" type="button" aria-label="前のページ">‹</button>
+    <button class="nav" id="next" type="button" aria-label="次のページ">›</button>
+    <button class="primary" id="make" type="button">A4 にする</button>
+  </div>
+</div>
+
+<section class="sheet-view" id="result" hidden aria-label="できあがり">
+  <div class="wrap">
+    <button class="ghost-btn" id="back" type="button">‹ 編集にもどる</button>
+    <h2>できあがり</h2>
+    <p class="hint">この1枚を印刷して、折って、真ん中を1本切ると本になります。</p>
+    <img class="result-img" id="resultImg" alt="8ページを並べたA4の画像">
+    <div class="actions">
+      <button class="primary" id="savePdf" type="button">PDF を保存</button>
+      <button class="secondary" id="savePng" type="button">画像を保存</button>
+    </div>
+    <p class="status" id="status" role="status"></p>
+    <div class="notice">
+      <b>印刷するとき</b>：PDF を「実際のサイズ（100%）」で印刷してください。「用紙に合わせる」だと少し縮んで、折り目がずれます。<br>
+      保存ボタンが動かないときは、上の画像を長押しして保存できます。
+    </div>
+    <ol class="steps">
+      <li>印刷した面を外にして、横長のまま上下に半分に折って開く</li>
+      <li>左右に半分、さらに半分に折って、8マスの折り目をつける</li>
+      <li>上下に半分に折ったまま、真ん中の2マスぶん（破線）だけ切る</li>
+      <li>開いて両端を押し寄せ、十字になったら表紙が外に来るようにたたむ</li>
+    </ol>
+  </div>
+</section>
+
+<script>
+(() => {
+  // ───────── 紙の寸法（mm）─────────
+  const PW = 74.25, PH = 105;           // 1ページ
+  const FRAME = 5;                      // 四辺の白い縁。刷れない帯をここに隠す
+  const PT = 0.3528;                    // 1pt = 0.3528mm
+  const TOP = [5, 4, 3, 2], BOTTOM = [6, 7, 8, 1]; // 面付け。上段は 180° 回す
+  const ORDER = [[1], [2, 3], [4, 5], [6, 7], [8]];
+  const MARU = '"Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif';
+  const SANS = '"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif';
+
+  const COLORS = [
+    { id: "white", fill: "#fbfdff", edge: true },
+    { id: "yellow", fill: "#ffe680" },
+    { id: "blue-soft", fill: "#edf5ff" },
+    { id: "peach", fill: "#fff1ea" },
+    { id: "pink", fill: "#ffe3ec" },
+    { id: "green", fill: "#e6f4e8" },
+    { id: "blue", fill: "#244fc7", dark: true },
+    { id: "ink", fill: "#203047", dark: true },
+  ];
+  const colorOf = id => COLORS.find(c => c.id === id) || COLORS[0];
+
+  // かたちごとに使う欄とその呼び名
+  const LAYOUTS = {
+    cover:     { label: "表紙",       fields: { kicker: "上の小さな文字", title: "タイトル", body: "サブタイトル", foot: "下の一行（「／」で左右に分かれる）", photo: "写真" } },
+    big:       { label: "大きな問い", fields: { kicker: "小見出し", title: "大きく書くこと", body: "そえる一言", foot: "下の一行" } },
+    text:      { label: "文章",       fields: { kicker: "小見出し", title: "見出し", body: "文章", foot: "書いた人・ひとこと" } },
+    photo:     { label: "写真だけ",   fields: { photo: "写真", foot: "写真の説明（なくてもいい）" } },
+    photoText: { label: "写真＋文",   fields: { photo: "写真", kicker: "小見出し", title: "見出し", body: "文章" } },
+    list:      { label: "リスト",     fields: { kicker: "小見出し", title: "見出し", body: "1行に1つずつ", foot: "下の一行" } },
+    write:     { label: "書き込み欄", fields: { kicker: "小見出し", title: "問いかけ", foot: "線のあとのことば", body: "小さな注意書き" } },
+    back:      { label: "裏表紙",     fields: { kicker: "小見出し", body: "この本について", foot: "作った日・作った人・場所（改行できる）" } },
+  };
+  const ROLE = { 1: "表紙", 2: "見開き① の左", 3: "見開き① の右", 4: "見開き② の左", 5: "見開き② の右", 6: "見開き③ の左", 7: "見開き③ の右", 8: "裏表紙" };
+
+  const blank = () => ({
+    1: { layout: "cover", bg: "yellow", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
+    2: { layout: "big", bg: "white", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
+    3: { layout: "text", bg: "blue-soft", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
+    4: { layout: "photo", bg: "white", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
+    5: { layout: "list", bg: "white", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
+    6: { layout: "big", bg: "white", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
+    7: { layout: "write", bg: "peach", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
+    8: { layout: "back", bg: "blue", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
+  });
+
+  // 作例: 問いコーナーの問いと大人の返事（問いサイトで公開済みのもの。返事の書き手は立場で表す）
+  const sample = () => {
+    const p = blank();
+    Object.assign(p[1], { kicker: "まいにち ZINE", title: "問いの\nZINE", body: "問いコーナーから", foot: "#000／2026.9.23", photo: "sample/board.jpg", photoY: 0.12 });
+    Object.assign(p[2], { kicker: "届いた問い", title: "幸せって\n何？" });
+    Object.assign(p[3], { kicker: "大人の返事", body: "生きていれば幸せなんじゃないでしょうか。\n美味しい食べ物を食べることができることだったり、好きなことをできたり、友達と何気ない会話したり、、。\nそう言った気づいてないだけで、当たり前と感じてることは全て幸せだとおもいます！", foot: "— Miacis の大人スタッフ" });
+    Object.assign(p[4], { photo: "sample/notes.jpg", photoY: 0.3 });
+    Object.assign(p[5], { kicker: "ほかにも届いた問い", body: "昨日のよるごはんを思い出せないのはどうして？？？\n結婚式はチャペルでやるのに、葬式はお寺でやるのはなぜ？\nなんで人間はペンギンより偉いの？\n校則っていらなくない？\n子供はいつから大人になるの？\n心の安らぎが欲しい。", foot: "左：問いコーナーの付箋" });
+    Object.assign(p[6], { layout: "text", kicker: "届いた問い", title: "人生の比喩として最も適当なものを教えてください", body: "人生とは手づくりの舟だ。\n人生とは使いかけの消しゴムだ。\n人生とは寄り道を楽しむ旅だ。\n人生とはタピオカミルクティーだ。\n人生とは相手を許し、自分が進化するもののくり返しだ。", foot: "— Miacis のスタッフ 5人の返事から" });
+    Object.assign(p[7], { kicker: "あなたの番", title: "あなたにとって、\n人生とは", foot: "だ。", body: "書いたら、問いコーナーに貼っていってください。" });
+    Object.assign(p[8], { kicker: "この本について", body: "Miacis の問いコーナーには、年に約100件の問いが届きます。この号は、問いコーナーのサイトで公開している問いと大人の返事から抜き出しました。返事を書いた人は、名前ではなく立場で載せています。", foot: "まいにち ZINE #000 ／ 2026.9.23\nつくった人：にしむー\n青少年育成プラザ Miacis ／ 韮崎市" });
+    return p;
+  };
+
+  // ───────── 状態と保存（この端末のブラウザだけ）─────────
+  const KEY = "mainichi-zine-v1";
+  let state = { pages: sample(), current: 1, isSample: true };
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (saved && saved.pages) state = saved;
+  } catch (_) {}
+  let saveTimer;
+  const persist = () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); }
+      catch (_) {
+        // 写真が大きくて入りきらないときは、文字だけ残す
+        try {
+          const lite = JSON.parse(JSON.stringify(state));
+          for (const n in lite.pages) if (lite.pages[n].photo?.startsWith("data:")) lite.pages[n].photo = null;
+          localStorage.setItem(KEY, JSON.stringify(lite));
+        } catch (_) {}
+      }
+    }, 400);
+  };
+
+  // ───────── 画像の読み込み ─────────
+  const imgCache = new Map();
+  const loadImg = src => {
+    if (!src) return Promise.resolve(null);
+    if (imgCache.has(src)) return imgCache.get(src);
+    const pr = new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+    imgCache.set(src, pr);
+    return pr;
+  };
+  // 端末の写真を長辺 1600px の JPEG にしてから持つ（保存容量と書き出し速度のため）
+  const readPhoto = file => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onerror = () => rej(r.error);
+    r.onload = () => {
+      const im = new Image();
+      im.onerror = () => rej(new Error("この写真は読み込めませんでした"));
+      im.onload = () => {
+        const s = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
+        const c = document.createElement("canvas");
+        c.width = Math.round(im.naturalWidth * s); c.height = Math.round(im.naturalHeight * s);
+        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+        res(c.toDataURL("image/jpeg", 0.85));
+      };
+      im.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+
+  // ───────── フォント（和文は文字ごとに分割配信なので、使う文字を先に取りに行く）─────────
+  const ensureFonts = async text => {
+    if (!document.fonts?.load) return;
+    const t = text || "あ";
+    try {
+      await Promise.race([
+        Promise.all(["500", "700", "900"].map(w => document.fonts.load(`${w} 20px "Zen Maru Gothic"`, t))),
+        new Promise(r => setTimeout(r, 2500)),
+      ]);
+    } catch (_) {}
+  };
+  const allText = () => Object.values(state.pages).map(p => [p.kicker, p.title, p.body, p.foot].join("")).join("") + "0123456789写真をえらぶ";
+
+  // ───────── 改行（行頭禁則・行末禁則つき）─────────
+  const NO_START = "、。，．・：；？！゛゜ヽヾゝゞ々ー）］｝」』〉》】〕…‥ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ,.!?)]}%’”";
+  const NO_END = "（［｛「『〈《【〔([{‘“";
+  const seg = typeof Intl !== "undefined" && Intl.Segmenter ? new Intl.Segmenter("ja", { granularity: "word" }) : null;
+  const tokens = (s, words) => {
+    const raw = words && seg ? Array.from(seg.segment(s), x => x.segment) : (s.match(/[A-Za-z0-9@#&%.,'’\-]+|\s+|./gsu) || []);
+    // 「？？？」「。」」のような行頭に来てはいけない字の並びは、前の語にくっつけて1つにする
+    const out = [];
+    for (const t of raw) {
+      if (out.length && [...t].every(ch => NO_START.includes(ch))) out[out.length - 1] += t;
+      else out.push(t);
+    }
+    return out;
+  };
+  function wrap(ctx, text, maxW, words) {
+    const out = [];
+    for (const para of String(text).split("\n")) {
+      if (!para) { out.push(""); continue; }
+      let line = "";
+      const push = () => {
+        let carry = "";
+        while (line.length > 1 && NO_END.includes(line.at(-1))) { carry = line.at(-1) + carry; line = line.slice(0, -1); }
+        out.push(line); line = carry;
+      };
+      const add = t => {
+        const test = line + t;
+        if (ctx.measureText(test).width <= maxW || !line) { line = test; return; }
+        // 句読点・閉じ括弧は行頭に送らず、少しはみ出してでも前の行にぶら下げる
+        if (NO_START.includes(t[0]) && ctx.measureText(test).width <= maxW * 1.12) { line = test; return; }
+        push(); line += t.replace(/^\s+/, "");
+      };
+      for (const t of tokens(para, words)) {
+        if (ctx.measureText(t).width > maxW) for (const ch of t) add(ch); else add(t);
+      }
+      if (line) out.push(line);
+    }
+    return out;
+  }
+  const font = (weight, pt, fam = MARU) => `${weight} ${pt * PT}px ${fam}`;
+  // 枠に収まる最大の級数を 0.5pt 刻みで探す
+  function fit(ctx, text, { maxW, maxH, max, min, lh, weight = 900, fam = MARU, words = true }) {
+    for (let s = max; s >= min; s -= 0.5) {
+      ctx.font = font(weight, s, fam);
+      const lines = wrap(ctx, text, maxW, words);
+      if (lines.length * s * PT * lh <= maxH) return { size: s, lines };
+    }
+    ctx.font = font(weight, min, fam);
+    return { size: min, lines: wrap(ctx, text, maxW, words) };
+  }
+  function drawLines(ctx, lines, x, y, { size, lh, color, weight, fam = MARU, align = "left", maxW = 0 }) {
+    ctx.font = font(weight, size, fam);
+    ctx.fillStyle = color; ctx.textBaseline = "middle"; ctx.textAlign = align;
+    const step = size * PT * lh;
+    const ax = align === "right" ? x + maxW : align === "center" ? x + maxW / 2 : x;
+    lines.forEach((l, i) => ctx.fillText(l, ax, y + step * i + step / 2));
+    ctx.textAlign = "left";
+    return y + step * lines.length;
+  }
+  const measure = (ctx, text, maxW, o) => { ctx.font = font(o.weight, o.size, o.fam || MARU); const lines = wrap(ctx, text, maxW, o.words); return { lines, h: lines.length * o.size * PT * o.lh }; };
+
+  function rr(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function cover(ctx, im, x, y, w, h, posY) {
+    const s = Math.max(w / im.naturalWidth, h / im.naturalHeight);
+    const sw = w / s, sh = h / s;
+    ctx.drawImage(im, (im.naturalWidth - sw) / 2, (im.naturalHeight - sh) * posY, sw, sh, x, y, w, h);
+  }
+
+  // ───────── 1ページを描く（画面のプレビューと A4 書き出しで同じ関数を使う）─────────
+  // ctx は mm 単位にスケール済み。ghost=true のときだけ、空の欄に薄い案内を出す
+  function drawPage(ctx, p, n, img, ghost) {
+    const C = colorOf(p.bg);
+    const ink = C.dark ? "#ffffff" : "#203047";
+    const accent = C.dark ? "rgba(255,255,255,.82)" : "#244fc7";
+    const muted = C.dark ? "rgba(255,255,255,.78)" : "#53647b";
+    const hintC = C.dark ? "rgba(255,255,255,.4)" : "rgba(32,48,71,.3)";
+    const L = LAYOUTS[p.layout] || LAYOUTS.text;
+    const val = k => (p[k] || "").trim() ? p[k] : "";
+    const show = (k, fallback) => val(k) || (ghost ? (fallback ?? L.fields[k]) : "");
+    const col = k => val(k) ? null : hintC;
+
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, PW, PH);
+    const cx = FRAME, cy = FRAME, cw = PW - FRAME * 2, ch = PH - FRAME * 2;
+    ctx.save();
+    rr(ctx, cx, cy, cw, ch, 2); ctx.fillStyle = C.fill; ctx.fill();
+    if (C.edge) { ctx.lineWidth = 0.2; ctx.strokeStyle = "#d4e3f5"; ctx.stroke(); }
+    ctx.clip();
+    const x0 = cx + 4, y0 = cy + 4.5, w0 = cw - 8, h0 = ch - 9, yEnd = y0 + h0;
+
+    const kicker = y => { const t = show("kicker"); if (!t) return y; drawLines(ctx, [t], x0, y, { size: 6.5, lh: 1.4, color: col("kicker") || accent, weight: 700 }); return y + 6.5 * PT * 1.4; };
+    const photoBox = (x, y, w, h, r) => {
+      if (img) { ctx.save(); rr(ctx, x, y, w, h, r); ctx.clip(); cover(ctx, img, x, y, w, h, p.photoY ?? 0.5); ctx.restore(); }
+      else if (ghost) {
+        ctx.save(); rr(ctx, x, y, w, h, r); ctx.fillStyle = C.dark ? "rgba(255,255,255,.12)" : "rgba(36,79,199,.07)"; ctx.fill();
+        ctx.setLineDash([1.2, 1]); ctx.lineWidth = 0.3; ctx.strokeStyle = hintC; ctx.stroke(); ctx.restore();
+        drawLines(ctx, ["写真をえらぶ"], x, y + h / 2 - 2.5, { size: 7, lh: 1.4, color: hintC, weight: 700, align: "center", maxW: w });
+      }
+    };
+    const nombre = () => { if (n >= 2 && n <= 7) drawLines(ctx, [String(n)], cx, cy + ch - 3.6, { size: 5.5, lh: 1, color: muted, weight: 500, align: "center", maxW: cw }); };
+
+    switch (p.layout) {
+      case "cover": {
+        let y = kicker(y0 + 1) + 1.5;
+        const hasPhoto = img || ghost;
+        const t = fit(ctx, show("title", "タイトル"), { maxW: w0, maxH: hasPhoto ? 30 : 58, max: 26, min: 12, lh: 1.12 });
+        y = drawLines(ctx, t.lines, x0, y, { size: t.size, lh: 1.12, color: col("title") || ink, weight: 900 });
+        const sub = show("body");
+        if (sub) { const m = measure(ctx, sub, w0, { size: 9, lh: 1.35, weight: 700 }); drawLines(ctx, m.lines.slice(0, 3), x0, y + 1.5, { size: 9, lh: 1.35, color: col("body") || ink, weight: 700 }); }
+        const footY = yEnd - 3;
+        if (hasPhoto) {
+          const top = Math.max(y + 12, y0 + 36), h = footY - 3 - top;
+          if (h > 12) {
+            if (img) { ctx.save(); rr(ctx, x0 - 0.6, top - 0.6, w0 + 1.2, h + 1.2, 2.3); ctx.fillStyle = "#fff"; ctx.fill(); ctx.restore(); }
+            photoBox(x0, top, w0, h, 1.8);
+          }
+        }
+        const f = show("foot", "#001／日付");
+        if (f) {
+          const [l, r] = f.split(/[／/]/);
+          drawLines(ctx, [l.trim()], x0, footY - 1.5, { size: 6.5, lh: 1, color: col("foot") || ink, weight: 700 });
+          if (r) drawLines(ctx, [r.trim()], x0, footY - 1.5, { size: 6.5, lh: 1, color: col("foot") || ink, weight: 700, align: "right", maxW: w0 });
+        }
+        break;
+      }
+      case "big": {
+        const top = kicker(y0 + 1) + 4;
+        const note = show("body"), f = show("foot");
+        const bottom = yEnd - (f ? 7 : 3);
+        const t = fit(ctx, show("title", "大きく書くこと"), { maxW: w0, maxH: bottom - top - (note ? 14 : 0), max: 30, min: 11, lh: 1.35 });
+        const th = t.lines.length * t.size * PT * 1.35;
+        const nm = note ? measure(ctx, note, w0, { size: 7.5, lh: 1.7, weight: 500 }) : { lines: [], h: 0 };
+        let y = top + Math.max(0, (bottom - top - th - (note ? nm.h + 4 : 0)) / 2);
+        y = drawLines(ctx, t.lines, x0, y, { size: t.size, lh: 1.35, color: col("title") || ink, weight: 900 });
+        if (note) drawLines(ctx, nm.lines, x0, y + 4, { size: 7.5, lh: 1.7, color: col("body") || ink, weight: 500 });
+        if (f) drawLines(ctx, [f], x0, yEnd - 6, { size: 6, lh: 1.3, color: col("foot") || muted, weight: 500 });
+        nombre();
+        break;
+      }
+      case "text": {
+        const k = show("kicker"), ti = show("title"), b = show("body", "文章"), f = show("foot");
+        const tm = ti ? fit(ctx, ti, { maxW: w0, maxH: 30, max: 13, min: 9, lh: 1.45 }) : null;
+        const th = tm ? tm.lines.length * tm.size * PT * 1.45 + 4 : 0;
+        const kh = k ? 6.5 * PT * 1.4 + 3.5 : 0;
+        const fh = f ? 10 : 0;
+        const bm = fit(ctx, b, { maxW: w0, maxH: h0 - 6 - kh - th - fh, max: 7.6, min: 5.5, lh: 1.85, weight: 500, words: true });
+        const bh = bm.lines.length * bm.size * PT * 1.85;
+        const total = kh + th + bh + fh;
+        let y = y0 + Math.max(1, (h0 - 6 - total) / 2);
+        if (k) { kicker(y); y += kh; }
+        if (tm) y = drawLines(ctx, tm.lines, x0, y, { size: tm.size, lh: 1.45, color: col("title") || ink, weight: 900 }) + 4;
+        y = drawLines(ctx, bm.lines, x0, y, { size: bm.size, lh: 1.85, color: col("body") || ink, weight: 500 });
+        if (f) drawLines(ctx, wrap(ctx, f, w0, true).slice(0, 2), x0, y + 3.5, { size: 6, lh: 1.4, color: col("foot") || muted, weight: 500 });
+        nombre();
+        break;
+      }
+      case "photo": {
+        photoBox(cx, cy, cw, ch, 2);
+        const f = val("foot");
+        if (f) {
+          ctx.font = font(700, 6); const w = Math.min(cw - 6, ctx.measureText(f).width + 4.4);
+          ctx.save(); rr(ctx, cx + 3, cy + ch - 9, w, 5.6, 1); ctx.fillStyle = "rgba(255,255,255,.94)"; ctx.fill(); ctx.restore();
+          drawLines(ctx, wrap(ctx, f, w - 4.4, true).slice(0, 1), cx + 5.2, cy + ch - 9, { size: 6, lh: 1.55, color: "#203047", weight: 700 });
+        }
+        break;
+      }
+      case "photoText": {
+        photoBox(x0, y0, w0, 46, 1.6);
+        let y = kicker(y0 + 50);
+        const ti = show("title");
+        if (ti) { const t = fit(ctx, ti, { maxW: w0, maxH: 14, max: 12, min: 8, lh: 1.4 }); y = drawLines(ctx, t.lines, x0, y + 1, { size: t.size, lh: 1.4, color: col("title") || ink, weight: 900 }); }
+        const b = show("body");
+        if (b) { const m = fit(ctx, b, { maxW: w0, maxH: yEnd - 5 - y - 2, max: 7.2, min: 5.5, lh: 1.75, weight: 500, words: true }); drawLines(ctx, m.lines, x0, y + 2, { size: m.size, lh: 1.75, color: col("body") || ink, weight: 500 }); }
+        nombre();
+        break;
+      }
+      case "list": {
+        let y = kicker(y0 + 1) + 2.5;
+        const ti = show("title");
+        if (ti) { const t = fit(ctx, ti, { maxW: w0, maxH: 16, max: 12, min: 8, lh: 1.4 }); y = drawLines(ctx, t.lines, x0, y, { size: t.size, lh: 1.4, color: col("title") || ink, weight: 900 }) + 2.5; }
+        const items = (val("body") || (ghost ? "1行に1つずつ\n書いていくと\nこうなる" : "")).split("\n").map(s => s.trim()).filter(Boolean);
+        const f = show("foot");
+        const room = yEnd - (f ? 9 : 4) - y;
+        const pal = ["#fff6b8", "#ffe0ea", "#dcecff"];
+        // 項目が多いときは字を小さくして全部入れる
+        let size = 6.8, blocks;
+        for (; size >= 5; size -= 0.2) {
+          ctx.font = font(700, size);
+          blocks = items.map(t => wrap(ctx, t, w0 - 4.4, true));
+          const h = blocks.reduce((a, b) => a + b.length * size * PT * 1.45 + 3.2, 0) + Math.max(0, items.length - 1) * 2.2;
+          if (h <= room) break;
+        }
+        blocks.forEach((lines, i) => {
+          const h = lines.length * size * PT * 1.45 + 3.2;
+          ctx.save(); rr(ctx, x0, y, w0, h, 1); ctx.fillStyle = pal[i % 3]; ctx.fill(); ctx.restore();
+          drawLines(ctx, lines, x0 + 2.2, y + 1.6, { size, lh: 1.45, color: val("body") ? "#203047" : hintC, weight: 700 });
+          y += h + 2.2;
+        });
+        if (f) drawLines(ctx, [f], x0, yEnd - 6, { size: 6, lh: 1.3, color: col("foot") || muted, weight: 500 });
+        nombre();
+        break;
+      }
+      case "write": {
+        let y = kicker(y0 + 1) + 5;
+        const t = fit(ctx, show("title", "問いかけ"), { maxW: w0, maxH: 24, max: 12, min: 8, lh: 1.5 });
+        y = drawLines(ctx, t.lines, x0, y, { size: t.size, lh: 1.5, color: col("title") || ink, weight: 900 });
+        const note = show("body");
+        const bottom = yEnd - (note ? 10 : 4) - (show("foot") ? 9 : 0);
+        const lines = Math.max(1, Math.min(4, Math.floor((bottom - y - 6) / 13)));
+        ctx.strokeStyle = ink; ctx.lineWidth = 0.3;
+        for (let i = 0; i < lines; i++) { y += 13; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w0, y); ctx.stroke(); }
+        const f = show("foot");
+        if (f) drawLines(ctx, [f], x0, y + 2.5, { size: 12, lh: 1.2, color: col("foot") || ink, weight: 900, align: "right", maxW: w0 });
+        if (note) drawLines(ctx, wrap(ctx, note, w0, true).slice(0, 2), x0, yEnd - 8, { size: 6, lh: 1.5, color: col("body") || muted, weight: 500 });
+        nombre();
+        break;
+      }
+      case "back": {
+        let y = kicker(y0 + 1) + 3;
+        const f = show("foot", "作った日\nつくった人：");
+        ctx.font = font(500, 5.8);
+        const fl = f ? f.split("\n").flatMap(l => wrap(ctx, l, w0, true)) : [];
+        const fh = fl.length * 5.8 * PT * 1.7;
+        const b = show("body", "この本について");
+        if (b) { const m = fit(ctx, b, { maxW: w0, maxH: yEnd - fh - 10 - y, max: 7, min: 5.5, lh: 1.85, weight: 500, words: true }); drawLines(ctx, m.lines, x0, y, { size: m.size, lh: 1.85, color: col("body") || ink, weight: 500 }); }
+        if (fl.length) {
+          const top = yEnd - fh - 1;
+          ctx.strokeStyle = C.dark ? "rgba(255,255,255,.4)" : "#d4e3f5"; ctx.lineWidth = 0.2;
+          ctx.beginPath(); ctx.moveTo(x0, top - 2.5); ctx.lineTo(x0 + w0, top - 2.5); ctx.stroke();
+          drawLines(ctx, fl, x0, top, { size: 5.8, lh: 1.7, color: col("foot") || ink, weight: 500 });
+        }
+        break;
+      }
+    }
+    ctx.restore();
+  }
+
+  async function renderPageTo(canvas, n, ghost) {
+    const p = state.pages[n];
+    const img = await loadImg(p.photo);
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const k = canvas.width / PW;
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    drawPage(ctx, p, n, img, ghost);
+  }
+
+  // ───────── A4 に面付け（300dpi）─────────
+  async function makeSheet() {
+    await ensureFonts(allText());
+    const K = 3508 / 297; // px per mm
+    const sheet = document.createElement("canvas");
+    sheet.width = 3508; sheet.height = 2480;
+    const s = sheet.getContext("2d");
+    s.fillStyle = "#fff"; s.fillRect(0, 0, sheet.width, sheet.height);
+    const pageC = document.createElement("canvas");
+    pageC.width = Math.round(PW * K); pageC.height = Math.round(PH * K);
+    const place = async (n, col, row, flip) => {
+      await renderPageTo(pageC, n, false);
+      const x = col * PW * K, y = row * PH * K, w = PW * K, h = PH * K;
+      s.save();
+      if (flip) { s.translate(x + w, y + h); s.rotate(Math.PI); s.drawImage(pageC, 0, 0, w, h); }
+      else s.drawImage(pageC, x, y, w, h);
+      s.restore();
+    };
+    for (let i = 0; i < 4; i++) await place(TOP[i], i, 0, true);
+    for (let i = 0; i < 4; i++) await place(BOTTOM[i], i, 1, false);
+    // 折り目のトンボと、切る線
+    s.setTransform(K, 0, 0, K, 0, 0);
+    s.fillStyle = "#9aa9bb";
+    for (const x of [PW, PW * 2, PW * 3]) { s.fillRect(x - 0.075, 0, 0.15, 3); s.fillRect(x - 0.075, 210 - 3, 0.15, 3); }
+    s.fillRect(0, PH - 0.075, 3, 0.15); s.fillRect(297 - 3, PH - 0.075, 3, 0.15);
+    s.strokeStyle = "#7b8ba0"; s.lineWidth = 0.25; s.setLineDash([1.2, 0.9]);
+    s.beginPath(); s.moveTo(PW, PH); s.lineTo(PW * 3, PH); s.stroke(); s.setLineDash([]);
+    s.font = font(700, 5); s.textAlign = "center"; s.textBaseline = "middle";
+    const lw = s.measureText("ここだけ切る").width + 3;
+    s.fillStyle = "#fff"; s.fillRect(148.5 - lw / 2, PH - 2.2, lw, 2.2);
+    s.fillStyle = "#7b8ba0"; s.fillText("ここだけ切る", 148.5, PH - 1.2);
+    return sheet;
+  }
+
+  // ───────── 画面 ─────────
+  const $ = id => document.getElementById(id);
+  const pv = $("pv"), strip = $("strip");
+  const thumbs = {};
+
+  function buildStrip() {
+    strip.innerHTML = "";
+    for (const group of ORDER) {
+      const g = document.createElement("div"); g.className = "spread";
+      for (const n of group) {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "thumb"; b.setAttribute("aria-label", `${n}ページ（${ROLE[n]}）`);
+        const c = document.createElement("canvas"); c.width = 120; c.height = 170;
+        const s = document.createElement("span"); s.textContent = n === 1 ? "表紙" : n === 8 ? "裏" : n;
+        b.append(c, s); b.addEventListener("click", () => select(n));
+        g.append(b); thumbs[n] = { b, c };
+      }
+      strip.append(g);
+    }
+  }
+
+  function sizePreview() {
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const w = Math.round(pv.getBoundingClientRect().width * dpr) || 600;
+    pv.width = w; pv.height = Math.round(w * PH / PW);
+  }
+
+  let drawing = Promise.resolve();
+  const redraw = (all = false) => {
+    drawing = drawing.then(async () => {
+      await ensureFonts(allText());
+      await renderPageTo(pv, state.current, true);
+      const ns = all ? [1, 2, 3, 4, 5, 6, 7, 8] : [state.current];
+      for (const n of ns) await renderPageTo(thumbs[n].c, n, false);
+    });
+    return drawing;
+  };
+
+  function select(n) {
+    state.current = n;
+    for (const k in thumbs) thumbs[k].b.setAttribute("aria-current", String(+k === n));
+    thumbs[n].b.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+    const partner = { 2: 3, 3: 2, 4: 5, 5: 4, 6: 7, 7: 6 }[n];
+    $("stageNote").innerHTML = `<b>${n}ページ</b>　${ROLE[n]}${partner ? `（${partner}ページと並んで見える）` : ""}`;
+    $("prev").disabled = n === 1; $("next").disabled = n === 8;
+    buildEditor();
+    redraw();
+    persist();
+  }
+
+  function touched() {
+    if (state.isSample) { state.isSample = false; $("sampleChip").hidden = true; }
+  }
+
+  function buildEditor() {
+    const p = state.pages[state.current];
+    const L = LAYOUTS[p.layout];
+    // かたち
+    const lay = $("layouts"); lay.innerHTML = "";
+    for (const [id, def] of Object.entries(LAYOUTS)) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.textContent = def.label;
+      b.setAttribute("aria-pressed", String(id === p.layout));
+      b.addEventListener("click", () => { p.layout = id; touched(); buildEditor(); redraw(); persist(); });
+      lay.append(b);
+    }
+    // いろ
+    const cs = $("colors"); cs.innerHTML = "";
+    for (const c of COLORS) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "sw"; b.style.background = c.fill; b.setAttribute("aria-label", `色 ${c.id}`);
+      b.setAttribute("aria-pressed", String(c.id === p.bg));
+      b.addEventListener("click", () => { p.bg = c.id; touched(); buildEditor(); redraw(); persist(); });
+      cs.append(b);
+    }
+    // 欄
+    const f = $("fields"); f.innerHTML = "";
+    const h = document.createElement("h2"); h.textContent = "なかみ"; f.append(h);
+    for (const [key, label] of Object.entries(L.fields)) {
+      const wrapEl = document.createElement("div"); wrapEl.className = "field";
+      const id = `f-${key}`;
+      const lab = document.createElement("label"); lab.htmlFor = id; lab.textContent = label;
+      wrapEl.append(lab);
+      if (key === "photo") {
+        const row = document.createElement("div"); row.className = "photo-row";
+        const fb = document.createElement("label"); fb.className = "file-btn"; fb.textContent = p.photo ? "写真をかえる" : "写真をえらぶ";
+        const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.id = id;
+        inp.addEventListener("change", async () => {
+          const file = inp.files?.[0]; if (!file) return;
+          fb.firstChild.textContent = "読み込み中…";
+          try { p.photo = await readPhoto(file); p.photoY = 0.5; touched(); }
+          catch (e) { fb.firstChild.textContent = e.message; return; }
+          buildEditor(); redraw(); persist();
+        });
+        fb.append(inp); row.append(fb);
+        if (p.photo) {
+          const rm = document.createElement("button"); rm.type = "button"; rm.className = "ghost-btn"; rm.textContent = "写真をはずす";
+          rm.addEventListener("click", () => { p.photo = null; touched(); buildEditor(); redraw(); persist(); });
+          row.append(rm);
+        }
+        wrapEl.append(row);
+        if (p.photo) {
+          const rl = document.createElement("label"); rl.htmlFor = "f-photoY"; rl.textContent = "写真の見せる位置（上 ↔ 下）"; rl.style.marginTop = "8px";
+          const r = document.createElement("input"); r.type = "range"; r.className = "range"; r.id = "f-photoY"; r.min = 0; r.max = 1; r.step = 0.01; r.value = p.photoY ?? 0.5;
+          r.addEventListener("input", () => { p.photoY = +r.value; touched(); redraw(); persist(); });
+          wrapEl.append(rl, r);
+        }
+      } else {
+        const multi = key === "body" || key === "title" || (key === "foot" && p.layout === "back");
+        const inp = document.createElement(multi ? "textarea" : "input");
+        if (!multi) inp.type = "text";
+        inp.id = id; inp.value = p[key] || "";
+        if (key === "title") inp.rows = 2;
+        inp.addEventListener("input", () => { p[key] = inp.value; touched(); redraw(); persist(); });
+        wrapEl.append(inp);
+      }
+      f.append(wrapEl);
+    }
+  }
+
+  // ───────── 書き出しと保存 ─────────
+  let lastPng = null, lastPdf = null, lastUrl = null;
+  const status = t => { $("status").textContent = t; };
+  const stamp = () => new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  // claude.ai 上では downloads 機能、ふつうの Web 公開では共有メニューかダウンロード、どれもだめなら長押し
+  const downloadsP = window.claude?.use ? window.claude.use("downloads").catch(() => null) : Promise.resolve(null);
+  async function saveBlob(blob, name) {
+    const dl = await downloadsP;
+    if (dl) {
+      try { await dl.save({ filename: name, data: blob }); status(`${name} を保存しました。`); }
+      catch (e) {
+        const code = e?.code;
+        if (code === "declined") status("保存をやめました。");
+        else if (code === "rate_limited") status("保存の確認がもう出ています。少し待ってからもう一度押してください。");
+        else status("この画面では保存できませんでした。上の画像を長押しして保存してください。");
+      }
+      return;
+    }
+    const file = new File([blob], name, { type: blob.type });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "まいにちZINE" }); status("共有メニューから保存できます。"); return; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    try {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+      status(`${name} を保存しました。見つからないときは、画像を長押しして保存してください。`);
+    } catch (_) { status("この画面では保存ボタンが使えません。上の画像を長押しして保存してください。"); }
+  }
+
+  $("make").addEventListener("click", async () => {
+    const btn = $("make"); btn.disabled = true; btn.textContent = "つくっています…";
+    try {
+      const sheet = await makeSheet();
+      lastPng = await new Promise(r => sheet.toBlob(r, "image/png"));
+      if (lastUrl) URL.revokeObjectURL(lastUrl);
+      lastUrl = URL.createObjectURL(lastPng);
+      $("resultImg").src = lastUrl;
+      lastPdf = null;
+      if (window.jspdf?.jsPDF) {
+        const doc = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
+        doc.addImage(sheet.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 297, 210);
+        lastPdf = doc.output("blob");
+      }
+      $("savePdf").disabled = !lastPdf;
+      status(lastPdf ? "" : "PDF の部品が読み込めなかったので、画像だけ作りました。");
+      $("result").hidden = false; $("result").scrollTop = 0;
+    } finally { btn.disabled = false; btn.textContent = "A4 にする"; }
+  });
+  $("savePng").addEventListener("click", () => lastPng && saveBlob(lastPng, `zine-${stamp()}.png`));
+  $("savePdf").addEventListener("click", () => lastPdf && saveBlob(lastPdf, `zine-${stamp()}.pdf`));
+  $("back").addEventListener("click", () => { $("result").hidden = true; });
+
+  $("prev").addEventListener("click", () => select(Math.max(1, state.current - 1)));
+  $("next").addEventListener("click", () => select(Math.min(8, state.current + 1)));
+  $("btnSample").addEventListener("click", () => { state = { pages: sample(), current: 1, isSample: true }; $("sampleChip").hidden = false; $("confirmNew").hidden = true; select(1); redraw(true); });
+  $("btnNew").addEventListener("click", () => { $("confirmNew").hidden = false; });
+  $("confirmNo").addEventListener("click", () => { $("confirmNew").hidden = true; });
+  $("confirmYes").addEventListener("click", () => { state = { pages: blank(), current: 1, isSample: false }; $("sampleChip").hidden = true; $("confirmNew").hidden = true; select(1); redraw(true); });
+
+  window.addEventListener("resize", () => { sizePreview(); redraw(); });
+
+  buildStrip();
+  $("sampleChip").hidden = !state.isSample;
+  sizePreview();
+  select(state.current || 1);
+  redraw(true);
+  // フォントが届いたら描き直す（最初の描画がフォールバック字形だった場合のため）
+  document.fonts?.ready?.then(() => redraw(true));
+})();
+</script>
