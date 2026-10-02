@@ -163,11 +163,11 @@
   <p class="status" id="photoNote" role="status" style="margin:0 0 6px"></p>
   <div class="start" id="startCard" hidden>
     <b>あなたの1冊を作ってみよう！</b>
-    <p>なにの本にする？　えらぶと表紙のタイトルが入ります（あとで書きかえられます）。</p>
+    <p>なにの本にする？　えらぶと表紙にタイトルが入ります（あとで書きかえられます）。えらばなくても作れます。</p>
     <div class="chips" id="themes" role="group" aria-label="本のテーマ"></div>
     <ol>
       <li>写真を8枚までえらぶ → 表紙から順に1ページに1枚ずつ入る</li>
-      <li>ページごとに「ひながた」をえらび、写真や文字を指で動かして整える</li>
+      <li>写真を指で動かして大きさを決め、「＋文字」で書きたいことを足す</li>
       <li>「A4 にする」で1枚に並べて、刷って、折る</li>
     </ol>
     <label class="file-btn">写真をえらぶ（8枚まで）<input type="file" accept="image/*" multiple id="photosStart"></label>
@@ -196,7 +196,7 @@
 
   <section class="editor">
     <div class="group">
-      <h2>ひながた</h2>
+      <h2>ひながた（使わなくてもいい）</h2>
       <div class="chips" id="layouts"></div>
     </div>
     <div class="group">
@@ -329,7 +329,7 @@
   const BG = { 1: "yellow", 8: "blue" };
   const blank = () => {
     const pages = {};
-    for (let n = 1; n <= 8; n++) pages[n] = { bg: BG[n] || "white", ...fillPreset(n, defaultPreset(n), []) };
+    for (let n = 1; n <= 8; n++) pages[n] = { bg: BG[n] || "white", preset: null, items: [] };
     return pages;
   };
 
@@ -338,27 +338,30 @@
     return [1, 2, 3, 4, 5, 6, 7, 8].slice(0, count);
   }
 
-  // さいしょに選ぶテーマ。表紙のタイトルと、中のページの案内の文が変わる（あとで全部書きかえられる）
+  // さいしょに選ぶテーマ。選ぶと表紙にタイトルの文字が入る（あとで書きかえも消すこともできる）
   const THEMES = [
-    { id: "intro", label: "自己紹介", title: "はじめまして、\nわたしです", hint: "わたしのこと、ひとつ" },
-    { id: "likes", label: "好きなもの紹介", title: "わたしの\n好きなもの", hint: "どこが好き？" },
-    { id: "recent", label: "最近の話", title: "最近の\nわたし", hint: "いつ・どこで・どうだった？" },
-    { id: "videos", label: "好きな動画集", title: "好きな\n動画集", hint: "すきな理由をひとこと" },
+    { id: "intro", label: "自己紹介", title: "はじめまして、\nわたしです" },
+    { id: "likes", label: "好きなもの紹介", title: "わたしの\n好きなもの" },
+    { id: "recent", label: "最近の話", title: "最近の\nわたし" },
+    { id: "videos", label: "好きな動画集", title: "好きな\n動画集" },
   ];
   let theme = null;
 
-  function pagesFromPhotos(srcs, th = theme) {
+  // 写真を、縦横の比のまま中身の枠いっぱいに置く。上に寄せるので、横長の写真なら下が書くところになる
+  function fitPhoto(src, ratio, top = 0) {
+    let w = W0, h = w * ratio;
+    if (h > H0 - top) { h = H0 - top; w = h / ratio; }
+    return photoItem(src, X0 + (W0 - w) / 2, Y0 + top, w, h);
+  }
+  // 写真は1ページに1枚、写真だけを置く（空の文字の箱は作らない）
+  async function pagesFromPhotos(srcs, th = theme) {
     const pages = blank();
-    if (th) {
-      pages[1].items.find(i => i.type === "text" && i.hint === "タイトル").text = th.title;
-      for (let n = 2; n <= 7; n++) for (const i of pages[n].items) if (i.type === "text") i.hint = th.hint;
-    }
+    const ims = await Promise.all(srcs.map(loadImg));
     photoSlots(srcs.length).forEach((n, i) => {
-      const p = pages[n];
-      if (n === 8) Object.assign(p, fillPreset(8, "back-photo", p.items));
-      const s = p.items.find(it => it.type === "photo" && !it.photo);
-      if (s) s.photo = srcs[i]; else p.items.push(photoItem(srcs[i], X0, Y0, W0, 40));
+      const r = ims[i] ? ims[i].naturalHeight / ims[i].naturalWidth : 4 / 3;
+      pages[n].items.push(fitPhoto(srcs[i], r, n === 1 && th ? 27 : 0));
     });
+    if (th) pages[1].items.push(textItem(X0, Y0, W0, 24, { text: th.title, size: 22, weight: 900 }));
     return pages;
   }
 
@@ -403,6 +406,7 @@
       textItem(X0, Y_END - 6, W0, 6, { text: "まいにち ZINE #001 ／ 2026.10.2", size: 6.5 }),
     ] };
     VIDEOS.forEach((v, i) => { p[i + 2] = { bg: "white", preset: null, items: videoItems(th(v), v.title, watchUrl(v.id)) }; });
+    p[8] = { bg: "blue", ...fillPreset(8, "back-about", []) };
     const back = p[8].items.filter(i => i.type === "text");
     back[0].text = "この本について";
     back[1].text = "にしむ〜が好きな動画を6本えらびました。\nQR をスマホのカメラで読むと、その動画が開きます。\nあなたの好きな動画も、1冊にしてみませんか。";
@@ -527,7 +531,7 @@
       ]);
     } catch (_) {}
   };
-  const allText = () => Object.values(state.pages).map(p => (p.items || []).map(i => (i.text || "") + (i.hint || "")).join("")).join("") + "0123456789写真をえらぶ読めませんタップして文字を書く";
+  const allText = () => Object.values(state.pages).map(p => (p.items || []).map(i => (i.text || "") + (i.hint || "")).join("")).join("") + "0123456789写真をえらぶ読めませんタップして文字を書く＋写真・＋文字で置けますこのままなら手で書くページ";
 
   // ───────── 改行（行頭禁則・行末禁則つき）─────────
   const NO_START = "、。，．・：；？！゛゜ヽヾゝゞ々ー）］｝」』〉》】〕…‥ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ,.!?)]}%’”";
@@ -625,6 +629,7 @@
       else if (it.type === "qr") drawQr(ctx, it, ghost, hintC);
       else drawTextItem(ctx, it, ghost, ink, hintC);
     }
+    if (ghost && !(p.items || []).length) drawLines(ctx, ["＋写真・＋文字で置けます", "このままなら手で書くページ"], cx, cy + ch / 2 - 5, { size: 6.5, lh: 1.6, color: hintC, weight: 700, align: "center", maxW: cw });
     if (n >= 2 && n <= 7) drawLines(ctx, [String(n)], cx, cy + ch - 3.6, { size: 5.5, lh: 1, color: muted, weight: 500, align: "center", maxW: cw });
     ctx.restore();
   }
@@ -922,16 +927,19 @@
     const [thumb, title] = id ? await Promise.all([fetchThumb(id), fetchTitle(id)]) : [null, ""];
     if (state.pages[n] !== p) return; // 読み込み中に作りなおされた
     const link = id ? watchUrl(id) : url.href;
-    const hint = (theme?.id === "videos" && theme.hint) || "すきな理由をひとこと";
+    const hint = "すきな理由をひとこと";
     const real = p.items.filter(isReal);
-    let added;
+    let added, overPhoto = false;
     if (!real.length) {
       // 空のページなら、ひながたの空の箱は捨てて、1本ぶんを大きく置く
       added = id ? videoItems(thumb, title, link, false, Y0, hint) : [qrItem(link, (PW - 30) / 2, (PH - 30) / 2, 30)];
       p.items = added;
     } else {
       // 2本目からは小さい版を、いまある箱に重ならない場所に置く（QR が重なると読めなくなる）
-      const at = id ? findSpot(real, W0, compactHeight(), true) : findSpot(real, 22, 22);
+      // 空いている場所が無ければ、写真の上になら重ねる（QR どうし・文字どうしは重ねない。QR が重なると読めなくなる）
+      const place = list => id ? findSpot(list, W0, compactHeight(), true) : findSpot(list, 22, 22);
+      let at = place(real);
+      if (!at) { at = place(real.filter(i => i.type !== "photo")); overPhoto = !!at; }
       if (!at) { videoNote("このページには空きがありません。箱を動かすか小さくしてから、もう一度「置く」を押してください。"); return; }
       added = id ? videoItems(thumb, title, link, true, at.y) : [qrItem(link, at.x, at.y, 22)];
       p.items.push(...added);
@@ -939,7 +947,7 @@
     p.preset = null;
     if (state.current === n) selId = added[0].id;
     $("videoUrl").value = ""; $("videoForm").hidden = true;
-    videoNote(id && !title ? "タイトルが取れなかったので、自分で書いてください。" : "");
+    videoNote([overPhoto ? "空きがないので写真に重ねて置きました。動かして整えてね。" : "", id && !title ? "タイトルが取れなかったので、自分で書いてください。" : ""].join(""));
     changed();
   }
   $("videoForm").addEventListener("submit", e => { e.preventDefault(); addVideo($("videoUrl").value); });
@@ -1264,7 +1272,7 @@
   $("btnSample").addEventListener("click", () => { loadGen++; photoNote(""); state = { pages: sample(), current: 1, isSample: true }; syncStart(); $("confirmNew").hidden = true; select(1); redraw(true); });
   $("btnNew").addEventListener("click", () => { $("confirmNew").hidden = false; $("confirmPhotos").hidden = true; });
   $("confirmNo").addEventListener("click", () => { $("confirmNew").hidden = true; });
-  $("confirmYes").addEventListener("click", () => { loadGen++; photoNote(""); state = { pages: pagesFromPhotos([], theme), current: 1, isSample: false }; syncStart(); $("confirmNew").hidden = true; select(1); redraw(true); persist(); gcPhotos(); });
+  $("confirmYes").addEventListener("click", async () => { loadGen++; photoNote(""); state = { pages: await pagesFromPhotos([], theme), current: 1, isSample: false }; syncStart(); $("confirmNew").hidden = true; select(1); redraw(true); persist(); gcPhotos(); });
 
   // ───────── 写真から作る: 8枚までえらぶと、1ページに1枚ずつ自由に置くページにする ─────────
   const MAX_PHOTOS = 8;
@@ -1283,10 +1291,12 @@
     }
     if (gen !== loadGen) return;
     if (!srcs.length) { photoNote("写真を読み込めませんでした。別の写真でためしてください。"); return; }
-    state = { pages: pagesFromPhotos(srcs, theme), current: 1, isSample: false };
+    const pages = await pagesFromPhotos(srcs, theme);
+    if (gen !== loadGen) return;
+    state = { pages, current: 1, isSample: false };
     syncStart();
     select(1); redraw(true); persist(); gcPhotos();
-    const notes = [`${srcs.length}枚を、表紙から順に並べました。写真や文字をタップすると、動かしたり大きさを変えたりできます。ページごとに「ひながた」も変えられます。`];
+    const notes = [`${srcs.length}枚を、表紙から順に並べました。写真や文字をタップすると、動かしたり大きさを変えたりできます。文字は「＋文字」で足せます。`];
     if (all.length > MAX_PHOTOS) notes.push(`入れられるのは${MAX_PHOTOS}枚までなので、${MAX_PHOTOS + 1}枚目からは入れていません。`);
     if (failed) notes.push(`${failed}枚は読み込めませんでした。`);
     photoNote(notes.join(""));
