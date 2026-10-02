@@ -62,6 +62,27 @@
   .adjust button{min-width:44px;min-height:44px;border:1px solid var(--line);background:var(--surface);border-radius:12px;font-size:18px;font-weight:700}
   .adjust .done{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-size:15px;padding-inline:18px}
   .adjust .reset{font-size:13px;padding-inline:12px}
+  /* 自由に置くページ: 指の動きはすべて要素の操作に使う（スクロールはキャンバスの外で） */
+  /* 指の動きはすべて箱の操作に使う（ページのスクロールはキャンバスの外で） */
+  #pv{touch-action:none}
+  .videoform{width:100%;max-width:340px;display:flex;flex-direction:column;gap:6px}
+  .videoform label{font-size:12.5px;font-weight:700;color:var(--muted)}
+  .videoform div{display:flex;gap:6px}
+  .videoform input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;font-size:16px}
+  .videoform button{border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-weight:700;padding:0 16px}
+  .videoform .status{margin:0}
+  .start ol{margin:0;padding-left:1.3em;font-size:13px;display:flex;flex-direction:column;gap:2px}
+  .start .chips{margin-top:2px}
+  .itembar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center}
+  .itembar p{flex-basis:100%;margin:0;text-align:center;font-size:12.5px;font-weight:700;color:var(--accent)}
+  .itembar button,.itembar .file-btn{min-height:44px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:0 12px;font-size:14px;font-weight:700;color:var(--ink)}
+  .itembar .file-btn{background:var(--surface);color:var(--ink)}
+  .itembar .danger{color:var(--danger)}
+  .start{margin-bottom:10px;padding:14px;border-radius:14px;background:var(--surface);border:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+  .start b{font:900 16px/1.4 var(--maru)}
+  .start p{margin:0;font-size:13px;color:var(--muted)}
+  .start .file-btn{justify-content:center;background:var(--accent);color:var(--accent-ink);padding:13px 14px;font-size:15px}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
   .stage-note{font-size:12px;color:var(--muted);text-align:center}
   .stage-note b{color:var(--ink)}
 
@@ -117,11 +138,14 @@
   @media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- QR を作る（qrcode-generator 2.0.4・MIT・Kazuhiko Arase）。当日の回線に頼らないよう、この中に置いている -->
+<script src="vendor/qrcode.min.js"></script>
 
 <div class="wrap">
   <header class="top">
     <div class="brand">まいにちZINE<span id="sampleChip" class="sample-chip" hidden>作例</span><small>A4 1枚・8ページの本をつくる</small></div>
     <div class="menu">
+      <label class="ghost-btn file-btn" style="padding:6px 12px;font-size:13px;background:var(--surface);color:var(--ink)">写真から作る<input type="file" accept="image/*" multiple id="photosTop"></label>
       <button class="ghost-btn" id="btnSample" type="button">作例を見る</button>
       <button class="ghost-btn" id="btnNew" type="button">まっさらから</button>
     </div>
@@ -130,6 +154,24 @@
     <p>いま作っている8ページを消して、まっさらにします。</p>
     <button type="button" id="confirmNo">やめる</button>
     <button type="button" class="danger" id="confirmYes">消してはじめる</button>
+  </div>
+  <div id="confirmPhotos" class="confirm" hidden>
+    <p id="confirmPhotosMsg">えらんだ写真で8ページを作りなおします。いま作っている8ページは消えます。</p>
+    <button type="button" id="photosNo">やめる</button>
+    <button type="button" class="danger" id="photosYes">作りなおす</button>
+  </div>
+  <p class="status" id="photoNote" role="status" style="margin:0 0 6px"></p>
+  <div class="start" id="startCard" hidden>
+    <b>あなたの1冊を作ってみよう！</b>
+    <p>なにの本にする？　えらぶと表紙のタイトルが入ります（あとで書きかえられます）。</p>
+    <div class="chips" id="themes" role="group" aria-label="本のテーマ"></div>
+    <ol>
+      <li>写真を8枚までえらぶ → 表紙から順に1ページに1枚ずつ入る</li>
+      <li>ページごとに「ひながた」をえらび、写真や文字を指で動かして整える</li>
+      <li>「A4 にする」で1枚に並べて、刷って、折る</li>
+    </ol>
+    <label class="file-btn">写真をえらぶ（8枚まで）<input type="file" accept="image/*" multiple id="photosStart"></label>
+    <p>下にあるのは作例「にしむ〜の好きな動画集」。好きな動画は「＋動画・QR」で、サムネイルと QR を置けます。</p>
   </div>
 
   <nav class="strip" id="strip" aria-label="ページ"></nav>
@@ -143,12 +185,18 @@
       <button type="button" class="reset" id="zoomReset">元に戻す</button>
       <button type="button" class="done" id="adjustDone">できた</button>
     </div>
+    <div class="itembar" id="itemBar" hidden></div>
+    <form class="videoform" id="videoForm" hidden>
+      <label for="videoUrl">YouTube の URL を貼ると、サムネイル・タイトル・QR を置きます（ほかの URL は QR だけ）</label>
+      <div><input type="url" id="videoUrl" placeholder="https://youtu.be/…" inputmode="url" autocomplete="off"><button type="submit">置く</button></div>
+      <p class="status" id="videoNote" role="status"></p>
+    </form>
     <p class="stage-note" id="stageNote"></p>
   </section>
 
   <section class="editor">
     <div class="group">
-      <h2>かたち</h2>
+      <h2>ひながた</h2>
       <div class="chips" id="layouts"></div>
     </div>
     <div class="group">
@@ -156,7 +204,7 @@
       <div class="swatches" id="colors"></div>
     </div>
     <div class="group" id="fields"></div>
-    <p class="hint">写真はこの端末の中だけで使います。どこにも送りません。顔・名札・制服・学校名は写さないでね。</p>
+    <p class="hint">写真はこの端末の中だけで使います。どこにも送りません（「＋動画・QR」で貼った URL だけは、サムネイルとタイトルを YouTube に取りに行きます）。顔・名札・制服・学校名は写さないでね。</p>
   </section>
 </div>
 
@@ -220,44 +268,149 @@
   ];
   const colorOf = id => COLORS.find(c => c.id === id) || COLORS[0];
 
-  // かたちごとに使う欄とその呼び名
-  const LAYOUTS = {
-    cover:     { label: "表紙",       fields: { kicker: "上の小さな文字", title: "タイトル", body: "サブタイトル", foot: "下の一行（「／」で左右に分かれる）", photo: "写真" } },
-    big:       { label: "大きな問い", fields: { kicker: "小見出し", title: "大きく書くこと", body: "そえる一言", foot: "下の一行" } },
-    text:      { label: "文章",       fields: { kicker: "小見出し", title: "見出し", body: "文章", foot: "書いた人・ひとこと" } },
-    photo:     { label: "写真だけ",   fields: { photo: "写真", foot: "写真の説明（なくてもいい）" } },
-    photoText: { label: "写真＋文",   fields: { photo: "写真", kicker: "小見出し", title: "見出し", body: "文章" } },
-    list:      { label: "リスト",     fields: { kicker: "小見出し", title: "見出し", body: "1行に1つずつ", foot: "下の一行" } },
-    write:     { label: "書き込み欄", fields: { kicker: "小見出し", title: "問いかけ", foot: "線のあとのことば", body: "小さな注意書き" } },
-    back:      { label: "裏表紙",     fields: { kicker: "小見出し", body: "この本について", foot: "作った日・作った人・場所（改行できる）" } },
-    blank:     { label: "白紙（手書き）", fields: {} },
-  };
   const ROLE = { 1: "表紙", 2: "見開き① の左", 3: "見開き① の右", 4: "見開き② の左", 5: "見開き② の右", 6: "見開き③ の左", 7: "見開き③ の右", 8: "裏表紙" };
 
-  const blank = () => ({
-    1: { layout: "cover", bg: "yellow", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
-    2: { layout: "big", bg: "white", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
-    3: { layout: "text", bg: "blue-soft", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
-    4: { layout: "photo", bg: "white", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
-    5: { layout: "list", bg: "white", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
-    6: { layout: "big", bg: "white", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
-    7: { layout: "write", bg: "peach", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
-    8: { layout: "back", bg: "blue", kicker: "", title: "", body: "", foot: "", photo: null, photoY: 0.5 },
-  });
+  // ───────── ページの中身 ─────────
+  // どのページも、写真・文字・QR の箱を、ページの上の mm 座標（x, y, w, h）で items に持つ。配列の後ろほど手前に描く。
+  // 写真の箱は、枠の中の見せ方を photoX・photoY（0〜1）と photoZoom（1 = 枠いっぱい）で持つ
+  const X0 = FRAME + 4, Y0 = FRAME + 4.5, W0 = PW - FRAME * 2 - 8, Y_END = PH - FRAME - 4.5, H0 = Y_END - Y0;
+  const MIN_BOX = 6;
+  const QR_MIN = 15;
+  const uid = () => Math.random().toString(36).slice(2, 10);
+  const textItem = (x, y, w, h, o = {}) => ({ id: uid(), type: "text", x, y, w, h, text: "", size: 9, weight: 700, align: "left", band: false, ...o });
+  const photoItem = (src, x, y, w, h, o = {}) => ({ id: uid(), type: "photo", x, y, w, h, photo: src, photoX: 0.5, photoY: 0.5, photoZoom: 1, ...o });
+  const qrItem = (url, x, y, s) => ({ id: uid(), type: "qr", x, y, w: s, h: s, url });
+  // 中身のある箱か（空の写真の箱・空の文字の箱は、画面では案内が出て、刷ると何も出ない）
+  const isReal = i => i.type === "qr" ? !!i.url : i.type === "photo" ? !!i.photo : !!(i.text || "").trim();
 
-  // 作例: 問いコーナーの問いと大人の返事（問いサイトで公開済みのもの。返事の書き手は立場で表す）
+  // ひながた: 箱の並べ方だけを決める
+  const slot = (x, y, w, h) => photoItem(null, x, y, w, h);
+  const FULL = [FRAME, FRAME, PW - FRAME * 2, PH - FRAME * 2];
+  const PRESETS = {
+    cover: [
+      { id: "cover-photo", label: "写真＋タイトル", make: () => [textItem(X0, Y0, W0, 24, { size: 22, weight: 900, hint: "タイトル" }), slot(X0, Y0 + 27, W0, H0 - 27 - 9), textItem(X0, Y_END - 6, W0, 6, { size: 6.5, hint: "#001 ／ 日付" })] },
+      { id: "cover-full", label: "写真いっぱい", make: () => [slot(...FULL), textItem(X0, Y_END - 24, W0, 22, { size: 20, weight: 900, band: true, hint: "タイトル" })] },
+      { id: "cover-text", label: "文字だけ", make: () => [textItem(X0, Y0, W0, 7, { size: 7, hint: "上の小さな文字" }), textItem(X0, Y0 + 11, W0, 52, { size: 30, weight: 900, hint: "タイトル" }), textItem(X0, Y_END - 6, W0, 6, { size: 6.5, hint: "#001 ／ 日付" })] },
+    ],
+    page: [
+      { id: "photo-text", label: "写真＋文", make: () => [slot(X0, Y0, W0, 48), textItem(X0, Y0 + 52, W0, H0 - 52, { size: 8, weight: 500, hint: "文章" })] },
+      { id: "photo-head", label: "写真＋見出し", make: () => [slot(X0, Y0, W0, 62), textItem(X0, Y0 + 66, W0, H0 - 66, { size: 16, weight: 900, hint: "見出し" })] },
+      { id: "photo-only", label: "写真のみ", make: () => [slot(...FULL)] },
+      { id: "photo-multi", label: "複数写真", make: () => {
+        const w = (W0 - 2) / 2, h = 36;
+        return [slot(X0, Y0, w, h), slot(X0 + w + 2, Y0, w, h), slot(X0, Y0 + h + 2, w, h), slot(X0 + w + 2, Y0 + h + 2, w, h),
+          textItem(X0, Y0 + h * 2 + 6, W0, H0 - h * 2 - 6, { size: 8, weight: 500, hint: "ひとこと" })];
+      } },
+    ],
+    back: [
+      { id: "back-about", label: "この本について", make: () => [textItem(X0, Y0, W0, 7, { size: 7, hint: "この本について" }), textItem(X0, Y0 + 10, W0, 50, { size: 7.5, weight: 500, hint: "どんな本か・なぜ作ったか" }), textItem(X0, Y_END - 17, W0, 17, { size: 6, weight: 500, hint: "作った日\nつくった人" })] },
+      { id: "back-photo", label: "写真＋ひとこと", make: () => [slot(X0, Y0, W0, 44), textItem(X0, Y0 + 48, W0, H0 - 48 - 20, { size: 7.5, weight: 500, hint: "ひとこと" }), textItem(X0, Y_END - 17, W0, 17, { size: 6, weight: 500, hint: "作った日\nつくった人" })] },
+      { id: "back-blank", label: "白紙（手書き）", make: () => [] },
+    ],
+  };
+  const presetsFor = n => n === 1 ? PRESETS.cover : n === 8 ? PRESETS.back : PRESETS.page;
+  const defaultPreset = n => n === 1 ? "cover-photo" : n === 8 ? "back-about" : "photo-text";
+
+  // ひながたを当てる: いまある写真と文字を、新しい箱へ順に移す。入りきらない写真・文字と QR は、元の場所のまま残す
+  function fillPreset(n, presetId, items) {
+    const def = presetsFor(n).find(d => d.id === presetId) || presetsFor(n)[0];
+    const photos = items.filter(i => i.type === "photo" && i.photo);
+    const texts = items.filter(i => i.type === "text" && isReal(i));
+    const used = new Set();
+    const out = def.make().map(s => {
+      if (s.type === "photo" && photos.length) { const o = photos.shift(); used.add(o.id); return { ...s, photo: o.photo, photoX: o.photoX ?? 0.5, photoY: o.photoY ?? 0.5, photoZoom: o.photoZoom ?? 1 }; }
+      if (s.type === "text" && texts.length) { const o = texts.shift(); used.add(o.id); return { ...s, text: o.text }; }
+      return s;
+    });
+    return { preset: def.id, items: [...out, ...items.filter(i => !used.has(i.id) && isReal(i))] };
+  }
+  const applyPreset = (p, n, id) => Object.assign(p, fillPreset(n, id, p.items || []));
+
+  const BG = { 1: "yellow", 8: "blue" };
+  const blank = () => {
+    const pages = {};
+    for (let n = 1; n <= 8; n++) pages[n] = { bg: BG[n] || "white", ...fillPreset(n, defaultPreset(n), []) };
+    return pages;
+  };
+
+  // 写真 count 枚を、どのページに置くか（ページ番号の配列。i 枚目の写真が返り値[i] のページに入る）
+  function photoSlots(count) {
+    return [1, 2, 3, 4, 5, 6, 7, 8].slice(0, count);
+  }
+
+  // さいしょに選ぶテーマ。表紙のタイトルと、中のページの案内の文が変わる（あとで全部書きかえられる）
+  const THEMES = [
+    { id: "intro", label: "自己紹介", title: "はじめまして、\nわたしです", hint: "わたしのこと、ひとつ" },
+    { id: "likes", label: "好きなもの紹介", title: "わたしの\n好きなもの", hint: "どこが好き？" },
+    { id: "recent", label: "最近の話", title: "最近の\nわたし", hint: "いつ・どこで・どうだった？" },
+    { id: "videos", label: "好きな動画集", title: "好きな\n動画集", hint: "すきな理由をひとこと" },
+  ];
+  let theme = null;
+
+  function pagesFromPhotos(srcs, th = theme) {
+    const pages = blank();
+    if (th) {
+      pages[1].items.find(i => i.type === "text" && i.hint === "タイトル").text = th.title;
+      for (let n = 2; n <= 7; n++) for (const i of pages[n].items) if (i.type === "text") i.hint = th.hint;
+    }
+    photoSlots(srcs.length).forEach((n, i) => {
+      const p = pages[n];
+      if (n === 8) Object.assign(p, fillPreset(8, "back-photo", p.items));
+      const s = p.items.find(it => it.type === "photo" && !it.photo);
+      if (s) s.photo = srcs[i]; else p.items.push(photoItem(srcs[i], X0, Y0, W0, 40));
+    });
+    return pages;
+  }
+
+  // ───────── 動画（YouTube）: サムネイルと、動画を開く QR ─────────
+  const thumbUrl = (id, q = "hqdefault") => `https://i.ytimg.com/vi/${id}/${q}.jpg`;
+  const watchUrl = id => `https://youtu.be/${id}`;
+  function ytId(url) {
+    const h = url.hostname.replace(/^(www|m|music)\./, "");
+    if (h === "youtu.be") return url.pathname.slice(1).match(/^[\w-]{11}/)?.[0] || null;
+    if (h !== "youtube.com") return null;
+    return url.searchParams.get("v")?.match(/^[\w-]{11}$/)?.[0] || url.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{11})/)?.[1] || null;
+  }
+  // 1本ぶんの箱: サムネイルの上にタイトル（白い帯）と QR を重ね、下に自分のコメント。
+  // compact はページに2本目を足すときの小さい版（サムネイルを低くし、コメント欄も短い）
+  const videoHeights = compact => compact ? { th: 22, note: 9, q: QR_MIN } : { th: W0 * 9 / 16, note: H0 - W0 * 9 / 16 - 3, q: 17 };
+  function videoItems(thumb, title, url, compact = false, y = Y0, hint = "すきな理由をひとこと") {
+    const { th, note, q } = videoHeights(compact);
+    return [
+      photoItem(thumb, X0, y, W0, th),
+      textItem(X0 + 1.5, y + 1.5, W0 - 3, compact ? 8 : 10, { text: title, size: compact ? 7 : 8, weight: 900, band: true, hint: "動画のタイトル" }),
+      qrItem(url, X0 + W0 - q - 1.5, y + th - q - 1.5, q),
+      textItem(X0, y + th + 3, W0, note, { size: compact ? 7.5 : 9, weight: 500, hint }),
+    ];
+  }
+
+  // 作例「にしむ〜の好きな動画集」。※いまの6本は仮。本人から URL をもらったら VIDEOS を差し替える
+  const VIDEOS = [
+    { id: "jNQXAC9IVRw", title: "Me at the zoo" },
+    { id: "0E00Zuayv9Q", title: "PPAP（Pen-Pineapple-Apple-Pen Official）", q: "hqdefault" },
+    { id: "9bZkp7q19f0", title: "PSY - GANGNAM STYLE(강남스타일) M/V", q: "maxresdefault" },
+    { id: "OPf0YbXqDm0", title: "Mark Ronson - Uptown Funk ft. Bruno Mars", q: "maxresdefault" },
+    { id: "fJ9rUzIMcZQ", title: "Queen – Bohemian Rhapsody" },
+    { id: "dQw4w9WgXcQ", title: "Rick Astley - Never Gonna Give You Up", q: "maxresdefault" },
+  ];
   const sample = () => {
     const p = blank();
-    Object.assign(p[1], { kicker: "まいにち ZINE", title: "問いの\nZINE", body: "問いコーナーから", foot: "#000／2026.9.23", photo: "sample/board.jpg", photoY: 0.12 });
-    Object.assign(p[2], { kicker: "届いた問い", title: "幸せって\n何？" });
-    Object.assign(p[3], { kicker: "大人の返事", body: "生きていれば幸せなんじゃないでしょうか。\n美味しい食べ物を食べることができることだったり、好きなことをできたり、友達と何気ない会話したり、、。\nそう言った気づいてないだけで、当たり前と感じてることは全て幸せだとおもいます！", foot: "— Miacis の大人スタッフ" });
-    Object.assign(p[4], { photo: "sample/notes.jpg", photoY: 0.3 });
-    Object.assign(p[5], { kicker: "ほかにも届いた問い", body: "昨日のよるごはんを思い出せないのはどうして？？？\n結婚式はチャペルでやるのに、葬式はお寺でやるのはなぜ？\nなんで人間はペンギンより偉いの？\n校則っていらなくない？\n子供はいつから大人になるの？\n心の安らぎが欲しい。", foot: "左：問いコーナーの付箋" });
-    Object.assign(p[6], { layout: "text", kicker: "届いた問い", title: "人生の比喩として最も適当なものを教えてください", body: "人生とは手づくりの舟だ。\n人生とは使いかけの消しゴムだ。\n人生とは寄り道を楽しむ旅だ。\n人生とはタピオカミルクティーだ。\n人生とは相手を許し、自分が進化するもののくり返しだ。", foot: "— Miacis のスタッフ 5人の返事から" });
-    Object.assign(p[7], { kicker: "あなたの番", title: "あなたにとって、\n人生とは", foot: "だ。", body: "書いたら、問いコーナーに貼っていってください。" });
-    Object.assign(p[8], { kicker: "この本について", body: "Miacis の問いコーナーには、年に約100件の問いが届きます。この号は、問いコーナーのサイトで公開している問いと大人の返事から抜き出しました。返事を書いた人は、名前ではなく立場で載せています。", foot: "まいにち ZINE #000 ／ 2026.9.23\nつくった人：にしむー\n青少年育成プラザ Miacis ／ 韮崎市" });
+    const th = v => thumbUrl(v.id, v.q || "hqdefault");
+    const w = (W0 - 2) / 2, h = w * 9 / 16;
+    p[1] = { bg: "yellow", preset: null, items: [
+      textItem(X0, Y0, W0, 24, { text: "にしむ〜の\n好きな動画集", size: 22, weight: 900 }),
+      ...VIDEOS.map((v, i) => photoItem(th(v), X0 + (i % 2) * (w + 2), Y0 + 27 + Math.floor(i / 2) * (h + 2), w, h)),
+      textItem(X0, Y_END - 6, W0, 6, { text: "まいにち ZINE #001 ／ 2026.10.2", size: 6.5 }),
+    ] };
+    VIDEOS.forEach((v, i) => { p[i + 2] = { bg: "white", preset: null, items: videoItems(th(v), v.title, watchUrl(v.id)) }; });
+    const back = p[8].items.filter(i => i.type === "text");
+    back[0].text = "この本について";
+    back[1].text = "にしむ〜が好きな動画を6本えらびました。\nQR をスマホのカメラで読むと、その動画が開きます。\nあなたの好きな動画も、1冊にしてみませんか。";
+    back[2].text = "まいにち ZINE #001 ／ 2026.10.2\nつくった人：にしむ〜\n青少年育成プラザ Miacis ／ 韮崎市";
     return p;
   };
+
+  const photoNote = t => { const e = document.getElementById("photoNote"); if (e) e.textContent = t; };
 
   // ───────── 状態と保存（この端末のブラウザだけ）─────────
   const KEY = "mainichi-zine-v1";
@@ -265,6 +418,21 @@
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) || "null");
     if (saved && saved.pages) state = saved;
+    for (const [k, p] of Object.entries(state.pages)) {
+      const n = +k;
+      // 10/2 より前の版（テンプレートのページ）で作っていたものは、写真と文字を既定のひながたの箱に移す
+      if (!Array.isArray(p.items) || (p.layout && p.layout !== "free")) {
+        const legacy = [];
+        if (typeof p.photo === "string") legacy.push(photoItem(p.photo, 0, 0, 1, 1, { photoX: p.photoX ?? 0.5, photoY: p.photoY ?? 0.5, photoZoom: p.photoZoom ?? 1 }));
+        const text = [p.kicker, p.title, p.body, p.foot].filter(t => typeof t === "string" && t.trim()).join("\n");
+        if (text) legacy.push(textItem(0, 0, 1, 1, { text }));
+        Object.assign(p, fillPreset(n, n === 8 && legacy.some(i => i.type === "photo") ? "back-photo" : defaultPreset(n), legacy));
+      }
+      for (const key of ["layout", "kicker", "title", "body", "foot", "photo", "photoX", "photoY", "photoZoom"]) delete p[key];
+      // 数として読めない箱は捨てる（壊れた保存データで操作が止まらないように）
+      p.items = p.items.filter(i => i && ["x", "y", "w", "h"].every(k => Number.isFinite(i[k])) && (
+        i.type === "text" || (i.type === "photo" && (i.photo == null || typeof i.photo === "string")) || (i.type === "qr" && typeof i.url === "string")));
+    }
   } catch (_) {}
   let saveTimer;
   const persist = () => {
@@ -275,23 +443,61 @@
         // 写真が大きくて入りきらないときは、文字だけ残す
         try {
           const lite = JSON.parse(JSON.stringify(state));
-          for (const n in lite.pages) if (lite.pages[n].photo?.startsWith("data:")) lite.pages[n].photo = null;
+          for (const n in lite.pages) for (const it of lite.pages[n].items || []) if (it.photo?.startsWith("data:")) it.photo = null;
           localStorage.setItem(KEY, JSON.stringify(lite));
         } catch (_) {}
+        photoNote("この端末に写真を保存しきれませんでした。ページを閉じると写真が消えるので、先に「A4 にする」で保存してください。");
       }
     }, 400);
   };
 
+  // ───────── 写真の置き場所 ─────────
+  // 写真の中身は IndexedDB に置き、state（localStorage）には "idb:<key>" という札だけを持つ。
+  // localStorage は数MBしか入らず、写真8枚で溢れると再読み込みで写真が消えるため。
+  // IndexedDB が使えない端末では、これまでどおり data URL のまま state に持つ
+  const dbP = new Promise(res => {
+    try {
+      const r = indexedDB.open("mainichi-zine-photos", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("p");
+      r.onsuccess = () => res(r.result); r.onerror = () => res(null);
+    } catch (_) { res(null); }
+  });
+  const idb = async (mode, fn) => {
+    const db = await dbP; if (!db) throw new Error("IndexedDB が使えません");
+    return new Promise((res, rej) => {
+      const tx = db.transaction("p", mode), req = fn(tx.objectStore("p"));
+      tx.oncomplete = () => res(req?.result); tx.onerror = tx.onabort = () => rej(tx.error);
+    });
+  };
+  const pendingKeys = new Set(); // 保存したが、まだ state に入っていないかもしれない写真。gc で消さない
+  const keepPhoto = async dataUrl => {
+    try { const key = uid(); pendingKeys.add(key); await idb("readwrite", s => s.put(dataUrl, key)); return `idb:${key}`; }
+    catch (_) { return dataUrl; }
+  };
+  // state から参照されなくなった写真を消す（作りなおし・まっさら・起動のとき）
+  async function gcPhotos() {
+    try {
+      const used = new Set(pendingKeys);
+      for (const p of Object.values(state.pages)) for (const i of p.items || []) if (i.photo?.startsWith("idb:")) used.add(i.photo.slice(4));
+      for (const k of [...pendingKeys]) if (Object.values(state.pages).some(p => (p.items || []).some(i => i.photo === `idb:${k}`))) pendingKeys.delete(k);
+      const keys = await idb("readonly", s => s.getAllKeys());
+      const dead = keys.filter(k => !used.has(k));
+      if (dead.length) await idb("readwrite", s => { dead.forEach(k => s.delete(k)); });
+    } catch (_) {}
+  }
+
   // ───────── 画像の読み込み ─────────
   const imgCache = new Map();
   const loadImg = src => {
-    if (!src) return Promise.resolve(null);
+    if (typeof src !== "string" || !src) return Promise.resolve(null);
     if (imgCache.has(src)) return imgCache.get(src);
-    const pr = new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+    const pr = (src.startsWith("idb:") ? idb("readonly", s => s.get(src.slice(4))).catch(() => null) : Promise.resolve(src))
+      .then(url => new Promise(res => { if (!url) return res(null); const im = new Image(); if (/^https?:/.test(url)) im.crossOrigin = "anonymous"; im.onload = () => res(im); im.onerror = () => res(null); im.src = url; }));
     imgCache.set(src, pr);
     return pr;
   };
-  // 端末の写真を長辺 1600px の JPEG にしてから持つ（保存容量と書き出し速度のため）
+  // 端末の写真を長辺 1400px の JPEG にしてから持つ（保存容量と書き出し速度のため。
+  // 1ページの長辺 105mm に対して約 340dpi あるので、刷っても粗くならない）
   const readPhoto = file => new Promise((res, rej) => {
     const r = new FileReader();
     r.onerror = () => rej(r.error);
@@ -299,11 +505,11 @@
       const im = new Image();
       im.onerror = () => rej(new Error("この写真は読み込めませんでした"));
       im.onload = () => {
-        const s = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
+        const s = Math.min(1, 1400 / Math.max(im.naturalWidth, im.naturalHeight));
         const c = document.createElement("canvas");
         c.width = Math.round(im.naturalWidth * s); c.height = Math.round(im.naturalHeight * s);
         c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
-        res(c.toDataURL("image/jpeg", 0.85));
+        keepPhoto(c.toDataURL("image/jpeg", 0.82)).then(res);
       };
       im.src = r.result;
     };
@@ -321,7 +527,7 @@
       ]);
     } catch (_) {}
   };
-  const allText = () => Object.values(state.pages).map(p => [p.kicker, p.title, p.body, p.foot].join("")).join("") + "0123456789写真をえらぶ";
+  const allText = () => Object.values(state.pages).map(p => (p.items || []).map(i => (i.text || "") + (i.hint || "")).join("")).join("") + "0123456789写真をえらぶ読めませんタップして文字を書く";
 
   // ───────── 改行（行頭禁則・行末禁則つき）─────────
   const NO_START = "、。，．・：；？！゛゜ヽヾゝゞ々ー）］｝」』〉》】〕…‥ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ,.!?)]}%’”";
@@ -381,7 +587,6 @@
     ctx.textAlign = "left";
     return y + step * lines.length;
   }
-  const measure = (ctx, text, maxW, o) => { ctx.font = font(o.weight, o.size, o.fam || MARU); const lines = wrap(ctx, text, maxW, o.words); return { lines, h: lines.length * o.size * PT * o.lh }; };
 
   function rr(ctx, x, y, w, h, r) {
     ctx.beginPath();
@@ -401,20 +606,13 @@
     const c = crop(im, w, h, p);
     ctx.drawImage(im, c.sx, c.sy, c.sw, c.sh, x, y, w, h);
   }
-  let photoRect = null; // いま描いたページで写真が占める枠（mm）。タップの当たり判定に使う
-
   // ───────── 1ページを描く（画面のプレビューと A4 書き出しで同じ関数を使う）─────────
-  // ctx は mm 単位にスケール済み。ghost=true のときだけ、空の欄に薄い案内を出す
-  function drawPage(ctx, p, n, img, ghost) {
+  // ctx は mm 単位にスケール済み。imgs は 写真の箱の id → 読み込んだ画像。ghost=true のときだけ、空の箱に薄い案内を出す
+  function drawPage(ctx, p, n, imgs, ghost) {
     const C = colorOf(p.bg);
     const ink = C.dark ? "#ffffff" : "#203047";
-    const accent = C.dark ? "rgba(255,255,255,.82)" : "#244fc7";
     const muted = C.dark ? "rgba(255,255,255,.78)" : "#53647b";
     const hintC = C.dark ? "rgba(255,255,255,.4)" : "rgba(32,48,71,.3)";
-    const L = LAYOUTS[p.layout] || LAYOUTS.text;
-    const val = k => (p[k] || "").trim() ? p[k] : "";
-    const show = (k, fallback) => val(k) || (ghost ? (fallback ?? L.fields[k]) : "");
-    const col = k => val(k) ? null : hintC;
 
     ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, PW, PH);
     const cx = FRAME, cy = FRAME, cw = PW - FRAME * 2, ch = PH - FRAME * 2;
@@ -422,187 +620,110 @@
     rr(ctx, cx, cy, cw, ch, 2); ctx.fillStyle = C.fill; ctx.fill();
     if (C.edge) { ctx.lineWidth = 0.2; ctx.strokeStyle = "#d4e3f5"; ctx.stroke(); }
     ctx.clip();
-    const x0 = cx + 4, y0 = cy + 4.5, w0 = cw - 8, h0 = ch - 9, yEnd = y0 + h0;
-
-    const kicker = y => { const t = show("kicker"); if (!t) return y; drawLines(ctx, [t], x0, y, { size: 6.5, lh: 1.4, color: col("kicker") || accent, weight: 700 }); return y + 6.5 * PT * 1.4; };
-    const photoBox = (x, y, w, h, r) => {
-      photoRect = { x, y, w, h };
-      if (img) { ctx.save(); rr(ctx, x, y, w, h, r); ctx.clip(); cover(ctx, img, x, y, w, h, p); ctx.restore(); }
-      else if (ghost) {
-        ctx.save(); rr(ctx, x, y, w, h, r); ctx.fillStyle = C.dark ? "rgba(255,255,255,.12)" : "rgba(36,79,199,.07)"; ctx.fill();
-        ctx.setLineDash([1.2, 1]); ctx.lineWidth = 0.3; ctx.strokeStyle = hintC; ctx.stroke(); ctx.restore();
-        drawLines(ctx, ["写真をえらぶ"], x, y + h / 2 - 2.5, { size: 7, lh: 1.4, color: hintC, weight: 700, align: "center", maxW: w });
-      }
-    };
-    const nombre = () => { if (n >= 2 && n <= 7) drawLines(ctx, [String(n)], cx, cy + ch - 3.6, { size: 5.5, lh: 1, color: muted, weight: 500, align: "center", maxW: cw }); };
-
-    switch (p.layout) {
-      case "cover": {
-        let y = kicker(y0 + 1) + 1.5;
-        const hasPhoto = img || ghost;
-        const t = fit(ctx, show("title", "タイトル"), { maxW: w0, maxH: hasPhoto ? 30 : 58, max: 26, min: 12, lh: 1.12 });
-        y = drawLines(ctx, t.lines, x0, y, { size: t.size, lh: 1.12, color: col("title") || ink, weight: 900 });
-        const sub = show("body");
-        if (sub) { const m = measure(ctx, sub, w0, { size: 9, lh: 1.35, weight: 700 }); drawLines(ctx, m.lines.slice(0, 3), x0, y + 1.5, { size: 9, lh: 1.35, color: col("body") || ink, weight: 700 }); }
-        const footY = yEnd - 3;
-        if (hasPhoto) {
-          const top = Math.max(y + 12, y0 + 36), h = footY - 3 - top;
-          if (h > 12) {
-            if (img) { ctx.save(); rr(ctx, x0 - 0.6, top - 0.6, w0 + 1.2, h + 1.2, 2.3); ctx.fillStyle = "#fff"; ctx.fill(); ctx.restore(); }
-            photoBox(x0, top, w0, h, 1.8);
-          }
-        }
-        const f = show("foot", "#001／日付");
-        if (f) {
-          const [l, r] = f.split(/[／/]/);
-          drawLines(ctx, [l.trim()], x0, footY - 1.5, { size: 6.5, lh: 1, color: col("foot") || ink, weight: 700 });
-          if (r) drawLines(ctx, [r.trim()], x0, footY - 1.5, { size: 6.5, lh: 1, color: col("foot") || ink, weight: 700, align: "right", maxW: w0 });
-        }
-        break;
-      }
-      case "big": {
-        const top = kicker(y0 + 1) + 4;
-        const note = show("body"), f = show("foot");
-        const bottom = yEnd - (f ? 7 : 3);
-        const t = fit(ctx, show("title", "大きく書くこと"), { maxW: w0, maxH: bottom - top - (note ? 14 : 0), max: 30, min: 11, lh: 1.35 });
-        const th = t.lines.length * t.size * PT * 1.35;
-        const nm = note ? measure(ctx, note, w0, { size: 7.5, lh: 1.7, weight: 500 }) : { lines: [], h: 0 };
-        let y = top + Math.max(0, (bottom - top - th - (note ? nm.h + 4 : 0)) / 2);
-        y = drawLines(ctx, t.lines, x0, y, { size: t.size, lh: 1.35, color: col("title") || ink, weight: 900 });
-        if (note) drawLines(ctx, nm.lines, x0, y + 4, { size: 7.5, lh: 1.7, color: col("body") || ink, weight: 500 });
-        if (f) drawLines(ctx, [f], x0, yEnd - 6, { size: 6, lh: 1.3, color: col("foot") || muted, weight: 500 });
-        nombre();
-        break;
-      }
-      case "text": {
-        const k = show("kicker"), ti = show("title"), b = show("body", "文章"), f = show("foot");
-        const tm = ti ? fit(ctx, ti, { maxW: w0, maxH: 30, max: 13, min: 9, lh: 1.45 }) : null;
-        const th = tm ? tm.lines.length * tm.size * PT * 1.45 + 4 : 0;
-        const kh = k ? 6.5 * PT * 1.4 + 3.5 : 0;
-        const fh = f ? 10 : 0;
-        const bm = fit(ctx, b, { maxW: w0, maxH: h0 - 6 - kh - th - fh, max: 7.6, min: 5.5, lh: 1.85, weight: 500, words: true });
-        const bh = bm.lines.length * bm.size * PT * 1.85;
-        const total = kh + th + bh + fh;
-        let y = y0 + Math.max(1, (h0 - 6 - total) / 2);
-        if (k) { kicker(y); y += kh; }
-        if (tm) y = drawLines(ctx, tm.lines, x0, y, { size: tm.size, lh: 1.45, color: col("title") || ink, weight: 900 }) + 4;
-        y = drawLines(ctx, bm.lines, x0, y, { size: bm.size, lh: 1.85, color: col("body") || ink, weight: 500 });
-        if (f) drawLines(ctx, wrap(ctx, f, w0, true).slice(0, 2), x0, y + 3.5, { size: 6, lh: 1.4, color: col("foot") || muted, weight: 500 });
-        nombre();
-        break;
-      }
-      case "photo": {
-        photoBox(cx, cy, cw, ch, 2);
-        const f = val("foot");
-        if (f) {
-          ctx.font = font(700, 6); const w = Math.min(cw - 6, ctx.measureText(f).width + 4.4);
-          ctx.save(); rr(ctx, cx + 3, cy + ch - 9, w, 5.6, 1); ctx.fillStyle = "rgba(255,255,255,.94)"; ctx.fill(); ctx.restore();
-          drawLines(ctx, wrap(ctx, f, w - 4.4, true).slice(0, 1), cx + 5.2, cy + ch - 9, { size: 6, lh: 1.55, color: "#203047", weight: 700 });
-        }
-        break;
-      }
-      case "photoText": {
-        photoBox(x0, y0, w0, 46, 1.6);
-        let y = kicker(y0 + 50);
-        const ti = show("title");
-        if (ti) { const t = fit(ctx, ti, { maxW: w0, maxH: 14, max: 12, min: 8, lh: 1.4 }); y = drawLines(ctx, t.lines, x0, y + 1, { size: t.size, lh: 1.4, color: col("title") || ink, weight: 900 }); }
-        const b = show("body");
-        if (b) { const m = fit(ctx, b, { maxW: w0, maxH: yEnd - 5 - y - 2, max: 7.2, min: 5.5, lh: 1.75, weight: 500, words: true }); drawLines(ctx, m.lines, x0, y + 2, { size: m.size, lh: 1.75, color: col("body") || ink, weight: 500 }); }
-        nombre();
-        break;
-      }
-      case "list": {
-        let y = kicker(y0 + 1) + 2.5;
-        const ti = show("title");
-        if (ti) { const t = fit(ctx, ti, { maxW: w0, maxH: 16, max: 12, min: 8, lh: 1.4 }); y = drawLines(ctx, t.lines, x0, y, { size: t.size, lh: 1.4, color: col("title") || ink, weight: 900 }) + 2.5; }
-        const items = (val("body") || (ghost ? "1行に1つずつ\n書いていくと\nこうなる" : "")).split("\n").map(s => s.trim()).filter(Boolean);
-        const f = show("foot");
-        const room = yEnd - (f ? 9 : 4) - y;
-        const pal = ["#fff6b8", "#ffe0ea", "#dcecff"];
-        // 項目が多いときは字を小さくして全部入れる
-        let size = 6.8, blocks;
-        for (; size >= 5; size -= 0.2) {
-          ctx.font = font(700, size);
-          blocks = items.map(t => wrap(ctx, t, w0 - 4.4, true));
-          const h = blocks.reduce((a, b) => a + b.length * size * PT * 1.45 + 3.2, 0) + Math.max(0, items.length - 1) * 2.2;
-          if (h <= room) break;
-        }
-        blocks.forEach((lines, i) => {
-          const h = lines.length * size * PT * 1.45 + 3.2;
-          ctx.save(); rr(ctx, x0, y, w0, h, 1); ctx.fillStyle = pal[i % 3]; ctx.fill(); ctx.restore();
-          drawLines(ctx, lines, x0 + 2.2, y + 1.6, { size, lh: 1.45, color: val("body") ? "#203047" : hintC, weight: 700 });
-          y += h + 2.2;
-        });
-        if (f) drawLines(ctx, [f], x0, yEnd - 6, { size: 6, lh: 1.3, color: col("foot") || muted, weight: 500 });
-        nombre();
-        break;
-      }
-      case "write": {
-        let y = kicker(y0 + 1) + 5;
-        const t = fit(ctx, show("title", "問いかけ"), { maxW: w0, maxH: 24, max: 12, min: 8, lh: 1.5 });
-        y = drawLines(ctx, t.lines, x0, y, { size: t.size, lh: 1.5, color: col("title") || ink, weight: 900 });
-        const note = show("body");
-        const bottom = yEnd - (note ? 10 : 4) - (show("foot") ? 9 : 0);
-        const lines = Math.max(1, Math.min(4, Math.floor((bottom - y - 6) / 13)));
-        ctx.strokeStyle = ink; ctx.lineWidth = 0.3;
-        for (let i = 0; i < lines; i++) { y += 13; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w0, y); ctx.stroke(); }
-        const f = show("foot");
-        if (f) drawLines(ctx, [f], x0, y + 2.5, { size: 12, lh: 1.2, color: col("foot") || ink, weight: 900, align: "right", maxW: w0 });
-        if (note) drawLines(ctx, wrap(ctx, note, w0, true).slice(0, 2), x0, yEnd - 8, { size: 6, lh: 1.5, color: col("body") || muted, weight: 500 });
-        nombre();
-        break;
-      }
-      case "blank": {
-        if (ghost) drawLines(ctx, ["ここは手で書くページ"], cx, cy + ch / 2 - 2.5, { size: 7, lh: 1.4, color: hintC, weight: 700, align: "center", maxW: cw });
-        nombre();
-        break;
-      }
-      case "back": {
-        let y = kicker(y0 + 1) + 3;
-        const f = show("foot", "作った日\nつくった人：");
-        ctx.font = font(500, 5.8);
-        const fl = f ? f.split("\n").flatMap(l => wrap(ctx, l, w0, true)) : [];
-        const fh = fl.length * 5.8 * PT * 1.7;
-        const b = show("body", "この本について");
-        if (b) { const m = fit(ctx, b, { maxW: w0, maxH: yEnd - fh - 10 - y, max: 7, min: 5.5, lh: 1.85, weight: 500, words: true }); drawLines(ctx, m.lines, x0, y, { size: m.size, lh: 1.85, color: col("body") || ink, weight: 500 }); }
-        if (fl.length) {
-          const top = yEnd - fh - 1;
-          ctx.strokeStyle = C.dark ? "rgba(255,255,255,.4)" : "#d4e3f5"; ctx.lineWidth = 0.2;
-          ctx.beginPath(); ctx.moveTo(x0, top - 2.5); ctx.lineTo(x0 + w0, top - 2.5); ctx.stroke();
-          drawLines(ctx, fl, x0, top, { size: 5.8, lh: 1.7, color: col("foot") || ink, weight: 500 });
-        }
-        break;
-      }
+    for (const it of p.items || []) {
+      if (it.type === "photo") drawPhotoItem(ctx, it, imgs.get(it.id), ghost, C, hintC);
+      else if (it.type === "qr") drawQr(ctx, it, ghost, hintC);
+      else drawTextItem(ctx, it, ghost, ink, hintC);
     }
+    if (n >= 2 && n <= 7) drawLines(ctx, [String(n)], cx, cy + ch - 3.6, { size: 5.5, lh: 1, color: muted, weight: 500, align: "center", maxW: cw });
     ctx.restore();
   }
 
-  // 「写真だけ刷る」: 文字を抜き、濃い地色は白にして（手で書けるように）写真と線だけ残す
-  const photoOnlyOf = p => ({ ...p, kicker: "", title: "", body: "", foot: "", bg: colorOf(p.bg).dark ? "white" : p.bg });
+  function drawPhotoItem(ctx, it, im, ghost, C, hintC) {
+    if (im) { ctx.save(); rr(ctx, it.x, it.y, it.w, it.h, 1.2); ctx.clip(); cover(ctx, im, it.x, it.y, it.w, it.h, it); ctx.restore(); return; }
+    if (!ghost) return;
+    ctx.save(); rr(ctx, it.x, it.y, it.w, it.h, 1.2); ctx.fillStyle = C.dark ? "rgba(255,255,255,.12)" : "rgba(36,79,199,.07)"; ctx.fill();
+    ctx.setLineDash([1.2, 1]); ctx.lineWidth = 0.3; ctx.strokeStyle = hintC; ctx.stroke(); ctx.restore();
+    drawLines(ctx, [it.photo ? "写真が読めません" : "写真をえらぶ"], it.x, it.y + it.h / 2 - 2.5, { size: Math.min(7, it.w / 6 / PT), lh: 1.4, color: hintC, weight: 700, align: "center", maxW: it.w });
+  }
+
+  // 文字の箱: 決めた大きさ（size pt）で書き、箱に入りきらないときだけ小さくする。はみ出した分は箱で切る
+  function drawTextItem(ctx, it, ghost, ink, hintC) {
+    const real = isReal(it) ? it.text : "";
+    const t = real || (ghost ? (it.hint || "タップして文字を書く") : "");
+    if (ghost && !real) {
+      ctx.save(); ctx.setLineDash([1.2, 1]); ctx.lineWidth = 0.25; ctx.strokeStyle = hintC;
+      ctx.strokeRect(it.x, it.y, it.w, it.h); ctx.restore();
+    }
+    if (!t) return;
+    const pad = it.band && real ? 1.6 : 0;
+    const lh = it.size >= 14 ? 1.25 : 1.7;
+    const weight = it.weight || 700;
+    const m = fit(ctx, t, { maxW: Math.max(1, it.w - pad * 2), maxH: Math.max(1, it.h - pad * 2), max: it.size || 9, min: 4.5, lh, weight, words: true });
+    const th = m.lines.length * m.size * PT * lh;
+    ctx.save();
+    if (pad) { rr(ctx, it.x, it.y, it.w, Math.min(it.h, th + pad * 2), 1); ctx.fillStyle = "rgba(255,255,255,.94)"; ctx.fill(); }
+    ctx.beginPath(); ctx.rect(it.x, it.y, it.w, it.h); ctx.clip();
+    drawLines(ctx, m.lines, it.x + pad, it.y + pad, { size: m.size, lh, color: !real ? hintC : pad ? "#203047" : ink, weight, align: it.align || "left", maxW: it.w - pad * 2 });
+    ctx.restore();
+  }
+
+  // QR: 箱の短い辺いっぱいの正方形に、白い余白（4マス）つきで描く。1マスずつ mm の四角で描くので、刷ってもぼけない
+  const qrCache = new Map();
+  function qrOf(text) {
+    if (!qrCache.has(text)) {
+      let q = null;
+      try { q = window.qrcode(0, "M"); q.addData(text); q.make(); } catch (_) { q = null; }
+      qrCache.set(text, q);
+    }
+    return qrCache.get(text);
+  }
+  function drawQr(ctx, it, ghost, hintC) {
+    const s = Math.min(it.w, it.h), x = it.x + (it.w - s) / 2, y = it.y + (it.h - s) / 2;
+    const q = it.url ? qrOf(it.url) : null;
+    if (!q) {
+      if (ghost) { ctx.save(); ctx.setLineDash([1.2, 1]); ctx.lineWidth = 0.3; ctx.strokeStyle = hintC; ctx.strokeRect(x, y, s, s); ctx.restore();
+        drawLines(ctx, ["QR"], x, y + s / 2 - 2.5, { size: 7, lh: 1.4, color: hintC, weight: 700, align: "center", maxW: s }); }
+      return;
+    }
+    const n = q.getModuleCount(), quiet = 4, cell = s / (n + quiet * 2);
+    ctx.fillStyle = "#fff"; ctx.fillRect(x, y, s, s);
+    ctx.fillStyle = "#000";
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      // 隣どうしを少し重ねて、拡大縮小したときに白い筋が出ないようにする
+      if (q.isDark(r, c)) ctx.fillRect(x + (c + quiet) * cell, y + (r + quiet) * cell, cell + 0.02, cell + 0.02);
+    }
+  }
+
+  // 「写真だけ刷る」: 文字の箱を抜き、濃い地色は白にして（手で書けるように）写真と QR だけ残す
+  const photoOnlyOf = p => ({ ...p, bg: colorOf(p.bg).dark ? "white" : p.bg, items: (p.items || []).filter(i => i.type !== "text") });
+  const loadItemImgs = async p => new Map(await Promise.all((p.items || []).filter(i => i.type === "photo" && i.photo).map(async i => [i.id, await loadImg(i.photo)])));
 
   async function renderPageTo(canvas, n, ghost, photoOnly = false) {
     const p = photoOnly ? photoOnlyOf(state.pages[n]) : state.pages[n];
-    const img = await loadImg(p.photo);
+    const imgs = await loadItemImgs(p);
     const ctx = canvas.getContext("2d");
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const k = canvas.width / PW;
     ctx.setTransform(k, 0, 0, k, 0, 0);
-    photoRect = null;
-    drawPage(ctx, p, n, img, ghost);
+    drawPage(ctx, p, n, imgs, ghost);
     if (canvas === pv) {
-      pvState = { rect: photoRect, img };
-      pv.classList.toggle("has-photo", !!(img && photoRect));
-      // 調整中は写真の枠を点線で示す（プレビューだけ。書き出しには出ない）
-      if (adjusting && photoRect) {
-        const r = photoRect;
-        ctx.save(); ctx.setLineDash([1.4, 1]); ctx.lineWidth = 0.45; ctx.strokeStyle = "#244fc7";
-        ctx.strokeRect(r.x + 0.25, r.y + 0.25, r.w - 0.5, r.h - 0.5); ctx.restore();
-      }
+      const it = selItem();
+      pvState = { rect: it?.type === "photo" && it.photo ? it : null, img: it?.type === "photo" ? imgs.get(it.id) || null : null };
+      if (it) drawSelection(ctx, it, !adjusting);
     }
   }
   let pvState = { rect: null, img: null };
   let adjusting = false;
+
+  // 自由に置くページで、いまえらんでいる箱（保存しない）
+  let selId = null;
+  const selItem = () => (state.pages[state.current]?.items || []).find(i => i.id === selId) || null;
+  const cssPerMm = () => (pv.getBoundingClientRect().width || 300) / PW;
+  const corners = it => [[it.x, it.y], [it.x + it.w, it.y], [it.x + it.w, it.y + it.h], [it.x, it.y + it.h]];
+  // えらんだ箱の枠と、四隅の大きさを変えるつまみ（プレビューだけ。書き出しには出ない）
+  function drawSelection(ctx, it, handles) {
+    const u = 1 / cssPerMm(); // 画面の 1px が何 mm か
+    ctx.save();
+    ctx.setLineDash([4 * u, 3 * u]); ctx.lineWidth = 1.5 * u; ctx.strokeStyle = "#244fc7";
+    ctx.strokeRect(it.x, it.y, it.w, it.h); ctx.setLineDash([]);
+    if (handles) for (const [hx, hy] of corners(it)) {
+      ctx.beginPath(); ctx.arc(hx, hy, 7 * u, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff"; ctx.fill(); ctx.lineWidth = 2 * u; ctx.stroke();
+    }
+    ctx.restore();
+  }
 
   // ───────── A4 に面付け（300dpi）─────────
   async function makeSheet(photoOnly = false) {
@@ -672,12 +793,13 @@
       await renderPageTo(pv, state.current, true);
       const ns = all ? [1, 2, 3, 4, 5, 6, 7, 8] : [state.current];
       for (const n of ns) await renderPageTo(thumbs[n].c, n, false);
-    });
+    }).catch(e => console.error(e)); // 1回の失敗で、そのあとの描き直しが止まらないように
     return drawing;
   };
 
   function select(n) {
     setAdjust(false, true);
+    selId = null;
     state.current = n;
     for (const k in thumbs) thumbs[k].b.setAttribute("aria-current", String(+k === n));
     thumbs[n].b.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
@@ -690,78 +812,206 @@
   }
 
   function touched() {
-    if (state.isSample) { state.isSample = false; $("sampleChip").hidden = true; }
+    if (state.isSample) { state.isSample = false; syncStart(); }
   }
 
+  const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
   function buildEditor() {
-    const p = state.pages[state.current];
-    const L = LAYOUTS[p.layout];
-    // かたち
+    const p = state.pages[state.current], n = state.current;
+    // ひながた
     const lay = $("layouts"); lay.innerHTML = "";
-    for (const [id, def] of Object.entries(LAYOUTS)) {
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "chip"; b.textContent = def.label;
-      b.setAttribute("aria-pressed", String(id === p.layout));
-      b.addEventListener("click", () => { p.layout = id; touched(); buildEditor(); redraw(); persist(); });
-      lay.append(b);
-    }
+    for (const d of presetsFor(n)) lay.append(el("button", { type: "button", className: "chip", textContent: d.label, ariaPressed: String(p.preset === d.id),
+      onclick: () => { applyPreset(p, n, d.id); selId = null; setAdjust(false, true); changed(); } }));
     // いろ
     const cs = $("colors"); cs.innerHTML = "";
     for (const c of COLORS) {
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "sw"; b.style.background = c.fill; b.setAttribute("aria-label", `色 ${c.id}`);
-      b.setAttribute("aria-pressed", String(c.id === p.bg));
-      b.addEventListener("click", () => { p.bg = c.id; touched(); buildEditor(); redraw(); persist(); });
+      const b = el("button", { type: "button", className: "sw", ariaLabel: `色 ${c.id}`, ariaPressed: String(c.id === p.bg), onclick: () => { p.bg = c.id; changed(); } });
+      b.style.background = c.fill;
       cs.append(b);
     }
-    // 欄
     const f = $("fields"); f.innerHTML = "";
-    const h = document.createElement("h2"); h.textContent = "なかみ"; f.append(h);
-    if (!Object.keys(L.fields).length) {
-      const note = document.createElement("p"); note.className = "hint"; note.style.margin = "0";
-      note.textContent = "このページは白紙で刷られます。刷ったあとに、手で書いたり描いたりしてください。";
-      f.append(note);
-    }
-    for (const [key, label] of Object.entries(L.fields)) {
-      const wrapEl = document.createElement("div"); wrapEl.className = "field";
-      const id = `f-${key}`;
-      const lab = document.createElement("label"); lab.htmlFor = id; lab.textContent = label;
-      wrapEl.append(lab);
-      if (key === "photo") {
-        const row = document.createElement("div"); row.className = "photo-row";
-        const fb = document.createElement("label"); fb.className = "file-btn"; fb.textContent = p.photo ? "写真をかえる" : "写真をえらぶ";
-        const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.id = id;
-        inp.addEventListener("change", async () => {
-          const file = inp.files?.[0]; if (!file) return;
-          fb.firstChild.textContent = "読み込み中…";
-          try { p.photo = await readPhoto(file); p.photoX = 0.5; p.photoY = 0.5; p.photoZoom = 1; touched(); }
-          catch (e) { fb.firstChild.textContent = e.message; return; }
-          buildEditor(); redraw(); persist();
-        });
-        fb.append(inp); row.append(fb);
-        if (p.photo) {
-          const rm = document.createElement("button"); rm.type = "button"; rm.className = "ghost-btn"; rm.textContent = "写真をはずす";
-          rm.addEventListener("click", () => { p.photo = null; touched(); buildEditor(); redraw(); persist(); });
-          row.append(rm);
-        }
-        if (p.photo) {
-          const mv = document.createElement("button"); mv.type = "button"; mv.className = "ghost-btn"; mv.textContent = "大きさ・位置を変える";
-          mv.addEventListener("click", () => { setAdjust(true); pv.scrollIntoView({ block: "center", behavior: "smooth" }); });
-          row.append(mv);
-          const hint = document.createElement("p"); hint.className = "hint"; hint.style.margin = "4px 0 0"; hint.textContent = "上のページの写真をタップしても変えられます。";
-          wrapEl.append(row, hint);
-        } else wrapEl.append(row);
-      } else {
-        const multi = key === "body" || key === "title" || (key === "foot" && p.layout === "back");
-        const inp = document.createElement(multi ? "textarea" : "input");
-        if (!multi) inp.type = "text";
-        inp.id = id; inp.value = p[key] || "";
-        if (key === "title") inp.rows = 2;
-        inp.addEventListener("input", () => { p[key] = inp.value; touched(); redraw(); persist(); });
-        wrapEl.append(inp);
+    f.append(el("h2", { textContent: "なかみ" }));
+    buildItemBar();
+    buildItemEditor(f, p);
+  }
+
+  // ───────── 箱の操作パネル ─────────
+  const changed = (rebuild = true) => { touched(); if (rebuild) buildEditor(); redraw(); persist(); };
+  function selectItem(id) {
+    if (selId === id) return;
+    selId = id; buildEditor(); redraw();
+  }
+  // 写真をえらぶボタン。multiple のときは、えらんだ順に1枚ずつ onPhoto を呼ぶ
+  function photoPicker(text, onPhoto, multiple = false) {
+    const inp = el("input", { type: "file", accept: "image/*", multiple });
+    const lab = el("label", { className: "file-btn" }, text, inp);
+    inp.addEventListener("change", async () => {
+      const files = [...(inp.files || [])]; inp.value = "";
+      for (const [i, file] of files.entries()) {
+        lab.firstChild.textContent = files.length > 1 ? `読み込み中… ${i + 1}／${files.length}` : "読み込み中…";
+        try { await onPhoto(await readPhoto(file), i); }
+        catch (e) { lab.firstChild.textContent = e.message; return; }
       }
-      f.append(wrapEl);
+      lab.firstChild.textContent = text;
+    });
+    return lab;
+  }
+  // ＋写真: 空の写真の箱があれば順に埋め、なければ写真の縦横の比に合わせた箱を、少しずつずらして足す
+  async function addPhoto(src, k = 0) {
+    const p = state.pages[state.current];
+    const empty = p.items.find(i => i.type === "photo" && !i.photo);
+    if (empty) { Object.assign(empty, { photo: src, photoX: 0.5, photoY: 0.5, photoZoom: 1 }); selId = empty.id; changed(); return; }
+    const im = await loadImg(src);
+    const r = im ? im.naturalHeight / im.naturalWidth : 1;
+    let w = 40, h = w * r;
+    if (h > 60) { h = 60; w = h / r; }
+    const it = photoItem(src, (PW - w) / 2 + k * 4, (PH - h) / 2 + k * 4, w, h);
+    clampBox(it);
+    p.items.push(it); selId = it.id; changed();
+  }
+  function addText() {
+    const p = state.pages[state.current];
+    const it = textItem(X0 + 4, PH / 2 - 9, W0 - 8, 18, { size: 12 });
+    p.items.push(it); selId = it.id; changed();
+    focusText();
+  }
+  const focusText = () => { const t = $("f-text"); if (t) { t.focus({ preventScroll: true }); t.scrollIntoView({ block: "center", behavior: "smooth" }); } };
+  function bringFront() {
+    const p = state.pages[state.current], i = p.items.findIndex(x => x.id === selId);
+    if (i >= 0) { p.items.push(...p.items.splice(i, 1)); changed(); }
+  }
+  function removeSel() {
+    const p = state.pages[state.current];
+    p.items = p.items.filter(x => x.id !== selId); selId = null; changed();
+  }
+
+  // ＋動画・QR: YouTube の URL ならサムネイル・タイトル・QR を、それ以外の URL なら QR だけを置く
+  const videoNote = t => { $("videoNote").textContent = t; };
+  const blobToDataUrl = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+  async function fetchThumb(id) {
+    // 大きい順に探す。サムネイルは IndexedDB に写しておく（あとで回線がなくても刷れるように）
+    for (const q of ["maxresdefault", "sddefault", "hqdefault"]) {
+      try { const r = await fetch(thumbUrl(id, q)); if (r.ok) return await keepPhoto(await blobToDataUrl(await r.blob())); } catch (_) {}
     }
+    return thumbUrl(id);
+  }
+  async function fetchTitle(id) {
+    try {
+      const r = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl(id))}&format=json`);
+      if (r.ok) return (await r.json()).title || "";
+    } catch (_) {}
+    return "";
+  }
+  const compactHeight = () => { const v = videoHeights(true); return v.th + 3 + v.note; };
+  // 中身のある箱と重ならない、上から順に最初に空いている場所。どこにも無ければ null
+  function findSpot(items, w, h, fullWidth = false) {
+    const free = (x, y) => items.every(i => x + w + 1.5 <= i.x || i.x + i.w + 1.5 <= x || y + h + 1.5 <= i.y || i.y + i.h + 1.5 <= y);
+    for (let y = Y0; y + h <= Y_END; y += 1) {
+      if (fullWidth) { if (free(X0, y)) return { x: X0, y }; continue; }
+      for (let x = X0 + W0 - w; x >= X0; x -= 1) if (free(x, y)) return { x, y };
+    }
+    return null;
+  }
+  async function addVideo(raw) {
+    let url;
+    try { url = new URL(raw.trim()); if (!/^https?:$/.test(url.protocol)) throw new Error(); }
+    catch (_) { videoNote("https:// からはじまる URL を貼ってください。"); return; }
+    const n = state.current, p = state.pages[n];
+    const id = ytId(url);
+    videoNote(id ? "動画のサムネイルを取ってきています…" : "");
+    const [thumb, title] = id ? await Promise.all([fetchThumb(id), fetchTitle(id)]) : [null, ""];
+    if (state.pages[n] !== p) return; // 読み込み中に作りなおされた
+    const link = id ? watchUrl(id) : url.href;
+    const hint = (theme?.id === "videos" && theme.hint) || "すきな理由をひとこと";
+    const real = p.items.filter(isReal);
+    let added;
+    if (!real.length) {
+      // 空のページなら、ひながたの空の箱は捨てて、1本ぶんを大きく置く
+      added = id ? videoItems(thumb, title, link, false, Y0, hint) : [qrItem(link, (PW - 30) / 2, (PH - 30) / 2, 30)];
+      p.items = added;
+    } else {
+      // 2本目からは小さい版を、いまある箱に重ならない場所に置く（QR が重なると読めなくなる）
+      const at = id ? findSpot(real, W0, compactHeight(), true) : findSpot(real, 22, 22);
+      if (!at) { videoNote("このページには空きがありません。箱を動かすか小さくしてから、もう一度「置く」を押してください。"); return; }
+      added = id ? videoItems(thumb, title, link, true, at.y) : [qrItem(link, at.x, at.y, 22)];
+      p.items.push(...added);
+    }
+    p.preset = null;
+    if (state.current === n) selId = added[0].id;
+    $("videoUrl").value = ""; $("videoForm").hidden = true;
+    videoNote(id && !title ? "タイトルが取れなかったので、自分で書いてください。" : "");
+    changed();
+  }
+  $("videoForm").addEventListener("submit", e => { e.preventDefault(); addVideo($("videoUrl").value); });
+
+  function buildItemBar() {
+    const bar = $("itemBar"); bar.innerHTML = "";
+    bar.hidden = adjusting;
+    if (adjusting) return;
+    const it = selItem();
+    bar.append(el("p", { textContent: it ? "ドラッグで動かす・角の○か2本指で大きさを変える" : "写真や文字をタップしてえらぶ" }));
+    bar.append(photoPicker("＋写真", addPhoto, true),
+      el("button", { type: "button", textContent: "＋文字", onclick: addText }),
+      el("button", { type: "button", textContent: "＋動画・QR", onclick: () => { const fm = $("videoForm"); fm.hidden = !fm.hidden; if (!fm.hidden) $("videoUrl").focus(); } }));
+    if (!it) return;
+    if (it.type === "text") bar.append(el("button", { type: "button", textContent: "文字を書く", onclick: focusText }));
+    else if (it.type === "qr") bar.append(el("button", { type: "button", textContent: "URL を変える", onclick: () => { const u = $("f-url"); u?.focus({ preventScroll: true }); u?.scrollIntoView({ block: "center", behavior: "smooth" }); } }));
+    else if (it.photo) bar.append(el("button", { type: "button", textContent: "写真の中身を動かす", onclick: () => setAdjust(true) }));
+    else bar.append(photoPicker("写真を入れる", src => { Object.assign(it, { photo: src, photoX: 0.5, photoY: 0.5, photoZoom: 1 }); changed(); }));
+    bar.append(el("button", { type: "button", textContent: "手前へ", onclick: bringFront }));
+    bar.append(el("button", { type: "button", className: "danger", textContent: "消す", onclick: removeSel }));
+  }
+
+  function buildItemEditor(f, p) {
+    const items = p.items || [];
+    const list = el("div", { className: "chips" });
+    let photoNo = 0, qrNo = 0;
+    for (const it of items) {
+      const name = it.type === "photo" ? `写真 ${++photoNo}${it.photo ? "" : "（空）"}`
+        : it.type === "qr" ? `QR ${++qrNo}`
+        : `文字「${((it.text || "").trim() || it.hint || "").replace(/\s+/g, " ").slice(0, 8) || "…"}」`;
+      list.append(el("button", { type: "button", className: "chip", textContent: name, ariaPressed: String(it.id === selId), onclick: () => selectItem(it.id) }));
+    }
+    f.append(items.length ? list : el("p", { className: "hint", style: "margin:0", textContent: "まだ何も置いていません。上の「＋写真」「＋文字」「＋動画・QR」で足せます。手で書くページにするなら、このままで。" }));
+    const it = selItem();
+    if (!it) {
+      if (items.length) f.append(el("p", { className: "hint", style: "margin:8px 0 0", textContent: "上のページで写真や文字の箱をタップするか、ここでえらんでください。" }));
+      return;
+    }
+    if (it.type === "photo") {
+      const row = el("div", { className: "photo-row", style: "margin-top:12px" });
+      row.append(photoPicker(it.photo ? "写真をかえる" : "写真をえらぶ", src => { Object.assign(it, { photo: src, photoX: 0.5, photoY: 0.5, photoZoom: 1 }); changed(); }));
+      if (it.photo) row.append(el("button", { type: "button", className: "ghost-btn", textContent: "写真の中身を動かす", onclick: () => { setAdjust(true); pv.scrollIntoView({ block: "center", behavior: "smooth" }); } }));
+      f.append(row);
+      return;
+    }
+    if (it.type === "qr") {
+      const u = el("input", { type: "url", id: "f-url", value: it.url || "", inputMode: "url", autocomplete: "off" });
+      const warn = el("p", { className: "hint", style: "margin:0;color:var(--danger)", role: "status" });
+      const check = () => { warn.textContent = it.url && !qrOf(it.url) ? "この URL は長すぎて QR にできません。短い URL にしてください。" : ""; };
+      u.addEventListener("input", () => { it.url = u.value.trim(); check(); touched(); redraw(); persist(); });
+      check();
+      f.append(el("div", { className: "field", style: "margin-top:12px" }, el("label", { htmlFor: "f-url", textContent: "QR にする URL" }), u, warn,
+        el("p", { className: "hint", style: "margin:0", textContent: "スマホのカメラで読むと、この URL が開きます。刷ったら一度読んでたしかめてね。" })));
+      return;
+    }
+    // 文字の箱
+    const ta = el("textarea", { id: "f-text", value: it.text || "", placeholder: it.hint || "" });
+    ta.addEventListener("input", () => { it.text = ta.value; touched(); redraw(); persist(); });
+    f.append(el("div", { className: "field", style: "margin-top:12px" }, el("label", { htmlFor: "f-text", textContent: "文字" }), ta));
+    const out = el("output", { textContent: `${it.size}pt` });
+    const range = el("input", { type: "range", className: "range", id: "f-size", min: 5, max: 40, step: 0.5, value: it.size });
+    range.addEventListener("input", () => { it.size = +range.value; out.textContent = `${it.size}pt`; touched(); redraw(); persist(); });
+    f.append(el("div", { className: "field" }, el("label", { htmlFor: "f-size" }, "字の大きさ　", out), range,
+      el("p", { className: "hint", style: "margin:0", textContent: "箱に入りきらないときは、自動で小さくなります。" })));
+    const seg = (label, opts, key) => {
+      const s = el("div", { className: "seg" });
+      for (const [v, t] of opts) s.append(el("button", { type: "button", className: "chip", textContent: t, ariaPressed: String(it[key] === v), onclick: () => { it[key] = v; changed(); } }));
+      return el("div", { className: "field" }, el("label", { textContent: label }), s);
+    };
+    f.append(seg("太さ", [[900, "太い"], [700, "ふつう"], [500, "ほそい"]], "weight"));
+    f.append(seg("そろえ", [["left", "左"], ["center", "まんなか"], ["right", "右"]], "align"));
+    f.append(seg("うしろ", [[false, "なし"], [true, "白い帯（写真の上で読みやすく）"]], "band"));
   }
 
   // ───────── 書き出しと保存 ─────────
@@ -810,7 +1060,9 @@
         lastPdf = doc.output("blob");
       }
       $("savePdf").disabled = !lastPdf;
-      status(lastPdf ? "" : "PDF の部品が読み込めなかったので、画像だけ作りました。");
+      const badQr = Object.entries(state.pages).filter(([, p]) => (p.items || []).some(i => i.type === "qr" && i.url && !qrOf(i.url))).map(([n]) => n);
+      status([lastPdf ? "" : "PDF の部品が読み込めなかったので、画像だけ作りました。",
+        badQr.length ? `${badQr.join("・")}ページの QR は URL が長すぎて刷られていません。` : ""].join(""));
     }
   }
   $("make").addEventListener("click", async () => {
@@ -834,18 +1086,99 @@
   const fastDraw = () => {
     // 動かしている最中はプレビューだけ描き直す（サムネイルは指を離してから）
     if (fastQueued) return; fastQueued = true;
-    requestAnimationFrame(() => { fastQueued = false; drawing = drawing.then(() => renderPageTo(pv, state.current, true)); });
+    requestAnimationFrame(() => { fastQueued = false; drawing = drawing.then(() => renderPageTo(pv, state.current, true)).catch(e => console.error(e)); });
   };
+  // 写真の中身を動かす相手は、えらんだ写真の箱
+  const adjustObj = () => selItem();
   function setAdjust(on, quiet) {
-    const p = state.pages[state.current];
-    adjusting = !!(on && p?.photo);
+    adjusting = !!(on && adjustObj()?.photo && pvState.img);
     pv.classList.toggle("adjusting", adjusting);
     $("adjust").hidden = !adjusting;
-    pointers.clear(); gesture = null;
-    if (!quiet) redraw();
+    pointers.clear(); gesture = null; drag = null;
+    if (!quiet) { buildItemBar(); redraw(); }
+  }
+
+  // 箱をドラッグで動かす・四隅のつまみで大きさを変える・2本指で拡大縮小
+  let drag = null;
+  const box = it => ({ x: it.x, y: it.y, w: it.w, h: it.h });
+  const topItemAt = m => [...(state.pages[state.current].items || [])].reverse()
+    .find(it => m.x >= it.x - 1 && m.x <= it.x + it.w + 1 && m.y >= it.y - 1 && m.y <= it.y + it.h + 1) || null;
+  const cornerAt = (it, m) => {
+    const r = 18 / cssPerMm(); // 指で押しやすいように、つまみの見た目より広く取る
+    let best = -1, bd = r;
+    corners(it).forEach(([x, y], i) => { const d = Math.hypot(m.x - x, m.y - y); if (d <= bd) { bd = d; best = i; } });
+    return best;
+  };
+  // 動かしているとき、ページの縁・中身の縁・真ん中に 1.5mm まで近づいたら吸いつかせる
+  const SNAP = 1.5;
+  function snap(v, size, guides) {
+    let best = v, bd = SNAP;
+    for (const g of guides) for (const off of [0, size / 2, size]) {
+      const d = Math.abs(v + off - g); if (d < bd) { bd = d; best = g - off; }
+    }
+    return best;
+  }
+  const clampBox = it => {
+    if (it.type === "qr") { const q = Math.min(PW, Math.max(QR_MIN, Math.min(it.w, it.h))); it.w = it.h = q; }
+    it.w = Math.min(PW * 2, Math.max(MIN_BOX, it.w)); it.h = Math.min(PH * 2, Math.max(MIN_BOX, it.h));
+    // 少なくとも 4mm はページの中に残す（はみ出して見失わないように）
+    it.x = Math.min(PW - 4, Math.max(4 - it.w, it.x)); it.y = Math.min(PH - 4, Math.max(4 - it.h, it.y));
+  };
+  function freeDown(e, m) {
+    e.preventDefault();
+    try { pv.setPointerCapture(e.pointerId); } catch (_) {}
+    pointers.set(e.pointerId, m);
+    if (pointers.size === 2 && drag?.it) { drag = { kind: "pinch", it: drag.it, orig: box(drag.it), span: spanOf() }; return; }
+    if (pointers.size > 1) return;
+    const cur = selItem();
+    const c = cur ? cornerAt(cur, m) : -1;
+    if (c >= 0) { drag = { kind: "resize", it: cur, corner: c, start: m, orig: box(cur) }; return; }
+    const hit = topItemAt(m);
+    selectItem(hit?.id ?? null);
+    drag = hit ? { kind: "move", it: hit, start: m, orig: box(hit) } : null;
+  }
+  function freeMove(e, m) {
+    if (!pointers.has(e.pointerId) || !drag) return;
+    e.preventDefault();
+    pointers.set(e.pointerId, m);
+    const { it, orig } = drag;
+    if (drag.kind === "pinch" && pointers.size === 2) {
+      const now = spanOf(), s = drag.span.d > 0.5 ? now.d / drag.span.d : 1;
+      it.w = orig.w * s; it.h = orig.h * s;
+      it.x = orig.x + orig.w / 2 - it.w / 2 + (now.cx - drag.span.cx);
+      it.y = orig.y + orig.h / 2 - it.h / 2 + (now.cy - drag.span.cy);
+    } else if (drag.kind === "move") {
+      it.x = snap(orig.x + m.x - drag.start.x, orig.w, [FRAME, X0, PW / 2, X0 + W0, PW - FRAME]);
+      it.y = snap(orig.y + m.y - drag.start.y, orig.h, [FRAME, Y0, PH / 2, Y_END, PH - FRAME]);
+    } else if (drag.kind === "resize") {
+      // 押した角だけを動かし、向かいの角は止めておく
+      const dx = m.x - drag.start.x, dy = m.y - drag.start.y, c = drag.corner;
+      let x1 = orig.x, y1 = orig.y, x2 = orig.x + orig.w, y2 = orig.y + orig.h;
+      if (c === 0 || c === 3) x1 = Math.min(x2 - MIN_BOX, x1 + dx); else x2 = Math.max(x1 + MIN_BOX, x2 + dx);
+      if (c === 0 || c === 1) y1 = Math.min(y2 - MIN_BOX, y1 + dy); else y2 = Math.max(y1 + MIN_BOX, y2 + dy);
+      if (it.type === "qr") {
+        // QR は正方形のまま、押した角の側へ大きさを変える
+        const q = Math.min(PW, Math.max(QR_MIN, x2 - x1, y2 - y1));
+        if (c === 0 || c === 3) x1 = x2 - q; else x2 = x1 + q;
+        if (c === 0 || c === 1) y1 = y2 - q; else y2 = y1 + q;
+      }
+      Object.assign(it, { x: x1, y: y1, w: x2 - x1, h: y2 - y1 });
+    } else return;
+    clampBox(it);
+    touched(); fastDraw();
+  }
+  function freeUp(e) {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.delete(e.pointerId);
+    if (pointers.size === 1 && drag?.it) {
+      // 2本指から1本に減ったら、残った指でそのまま動かせるようにする
+      const rest = [...pointers.values()][0];
+      drag = { kind: "move", it: drag.it, start: rest, orig: box(drag.it) };
+      return;
+    }
+    if (!pointers.size) { drag = null; redraw(); persist(); }
   }
   const toMm = e => { const b = pv.getBoundingClientRect(); return { x: (e.clientX - b.left) / b.width * PW, y: (e.clientY - b.top) / b.height * PH }; };
-  const inPhoto = m => { const r = pvState.rect; return r && m.x >= r.x && m.x <= r.x + r.w && m.y >= r.y && m.y <= r.y + r.h; };
   const clamp01 = v => Math.min(1, Math.max(0, v));
   // 画面上で dx, dy（mm）動かした分だけ、写真の中身も同じ量だけ動かす
   function pan(p, dx, dy) {
@@ -870,20 +1203,17 @@
 
   pv.addEventListener("pointerdown", e => {
     const m = toMm(e);
-    if (!adjusting) {
-      // 写真をタップしたら調整モードへ（スクロールのためのドラッグと区別する）
-      gesture = pvState.img && inPhoto(m) ? { tap: true, x: e.clientX, y: e.clientY } : null;
-      return;
-    }
+    if (!adjusting) return freeDown(e, m);
     e.preventDefault();
     try { pv.setPointerCapture(e.pointerId); } catch (_) {}
     pointers.set(e.pointerId, m);
     gesture = pointers.size === 2 ? { pinch: spanOf() } : { last: m };
   });
   pv.addEventListener("pointermove", e => {
+    if (!adjusting) return freeMove(e, toMm(e));
     if (!adjusting || !pointers.has(e.pointerId)) return;
     e.preventDefault();
-    const p = state.pages[state.current];
+    const p = adjustObj();
     const m = toMm(e);
     pointers.set(e.pointerId, m);
     if (pointers.size === 1 && gesture?.last) {
@@ -898,10 +1228,7 @@
     touched(); fastDraw();
   });
   const endPointer = e => {
-    if (!adjusting) {
-      if (gesture?.tap && Math.hypot(e.clientX - gesture.x, e.clientY - gesture.y) < 10) setAdjust(true);
-      gesture = null; return;
-    }
+    if (!adjusting) return freeUp(e);
     if (!pointers.has(e.pointerId)) return;
     pointers.delete(e.pointerId);
     // 2本指から1本に減ったら、残った指でそのままドラッグを続けられるようにする
@@ -914,31 +1241,77 @@
     if (!adjusting) return;
     e.preventDefault();
     const m = toMm(e);
-    zoomAt(state.pages[state.current], Math.exp(-e.deltaY / 400), m.x, m.y);
+    zoomAt(adjustObj(), Math.exp(-e.deltaY / 400), m.x, m.y);
     touched(); fastDraw(); persist();
   }, { passive: false });
   const stepZoom = f => {
     const r = pvState.rect; if (!r) return;
-    zoomAt(state.pages[state.current], f, r.x + r.w / 2, r.y + r.h / 2);
+    zoomAt(adjustObj(), f, r.x + r.w / 2, r.y + r.h / 2);
     touched(); redraw(); persist();
   };
   $("zoomIn").addEventListener("click", () => stepZoom(1.25));
   $("zoomOut").addEventListener("click", () => stepZoom(1 / 1.25));
-  $("zoomReset").addEventListener("click", () => { Object.assign(state.pages[state.current], { photoX: 0.5, photoY: 0.5, photoZoom: 1 }); touched(); redraw(); persist(); });
+  $("zoomReset").addEventListener("click", () => { Object.assign(adjustObj(), { photoX: 0.5, photoY: 0.5, photoZoom: 1 }); touched(); redraw(); persist(); });
   $("adjustDone").addEventListener("click", () => setAdjust(false));
-  document.addEventListener("keydown", e => { if (e.key === "Escape" && adjusting) setAdjust(false); });
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Escape") return;
+    if (adjusting) setAdjust(false);
+    else if (selId && !/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName)) selectItem(null);
+  });
 
   $("prev").addEventListener("click", () => select(Math.max(1, state.current - 1)));
   $("next").addEventListener("click", () => select(Math.min(8, state.current + 1)));
-  $("btnSample").addEventListener("click", () => { state = { pages: sample(), current: 1, isSample: true }; $("sampleChip").hidden = false; $("confirmNew").hidden = true; select(1); redraw(true); });
-  $("btnNew").addEventListener("click", () => { $("confirmNew").hidden = false; });
+  $("btnSample").addEventListener("click", () => { loadGen++; photoNote(""); state = { pages: sample(), current: 1, isSample: true }; syncStart(); $("confirmNew").hidden = true; select(1); redraw(true); });
+  $("btnNew").addEventListener("click", () => { $("confirmNew").hidden = false; $("confirmPhotos").hidden = true; });
   $("confirmNo").addEventListener("click", () => { $("confirmNew").hidden = true; });
-  $("confirmYes").addEventListener("click", () => { state = { pages: blank(), current: 1, isSample: false }; $("sampleChip").hidden = true; $("confirmNew").hidden = true; select(1); redraw(true); });
+  $("confirmYes").addEventListener("click", () => { loadGen++; photoNote(""); state = { pages: pagesFromPhotos([], theme), current: 1, isSample: false }; syncStart(); $("confirmNew").hidden = true; select(1); redraw(true); persist(); gcPhotos(); });
+
+  // ───────── 写真から作る: 8枚までえらぶと、1ページに1枚ずつ自由に置くページにする ─────────
+  const MAX_PHOTOS = 8;
+  let pendingFiles = null;
+  function syncStart() { $("startCard").hidden = !state.isSample; $("sampleChip").hidden = !state.isSample; }
+  let loadGen = 0; // 読み込み中に別の操作をしたら、古い読み込みの結果は捨てる
+  async function startFromPhotos(files) {
+    const gen = ++loadGen;
+    const all = files.filter(f => !f.type || f.type.startsWith("image/"));
+    const list = all.slice(0, MAX_PHOTOS);
+    const srcs = [];
+    let failed = 0;
+    for (const [i, file] of list.entries()) {
+      photoNote(`写真を読み込んでいます… ${i + 1}／${list.length}`);
+      try { srcs.push(await readPhoto(file)); } catch (_) { failed++; }
+    }
+    if (gen !== loadGen) return;
+    if (!srcs.length) { photoNote("写真を読み込めませんでした。別の写真でためしてください。"); return; }
+    state = { pages: pagesFromPhotos(srcs, theme), current: 1, isSample: false };
+    syncStart();
+    select(1); redraw(true); persist(); gcPhotos();
+    const notes = [`${srcs.length}枚を、表紙から順に並べました。写真や文字をタップすると、動かしたり大きさを変えたりできます。ページごとに「ひながた」も変えられます。`];
+    if (all.length > MAX_PHOTOS) notes.push(`入れられるのは${MAX_PHOTOS}枚までなので、${MAX_PHOTOS + 1}枚目からは入れていません。`);
+    if (failed) notes.push(`${failed}枚は読み込めませんでした。`);
+    photoNote(notes.join(""));
+  }
+  for (const t of THEMES) $("themes").append(el("button", { type: "button", className: "chip", textContent: t.label, ariaPressed: "false",
+    onclick: e => { theme = theme === t ? null : t; for (const b of $("themes").children) b.ariaPressed = String(b === e.currentTarget && !!theme); } }));
+  const onPhotosChosen = inp => {
+    const files = [...(inp.files || [])]; inp.value = "";
+    if (!files.length) return;
+    $("confirmNew").hidden = true;
+    if (state.isSample) { startFromPhotos(files); return; }
+    pendingFiles = files;
+    $("confirmPhotosMsg").textContent = `えらんだ写真${Math.min(files.length, MAX_PHOTOS)}枚で8ページを作りなおします。いま作っている8ページは消えます。`;
+    $("confirmPhotos").hidden = false;
+  };
+  $("photosTop").addEventListener("change", e => onPhotosChosen(e.target));
+  $("photosStart").addEventListener("change", e => onPhotosChosen(e.target));
+  $("photosNo").addEventListener("click", () => { pendingFiles = null; $("confirmPhotos").hidden = true; });
+  $("photosYes").addEventListener("click", () => { const f = pendingFiles; pendingFiles = null; $("confirmPhotos").hidden = true; if (f) startFromPhotos(f); });
 
   window.addEventListener("resize", () => { sizePreview(); redraw(); });
 
   buildStrip();
-  $("sampleChip").hidden = !state.isSample;
+  syncStart();
+  gcPhotos();
   sizePreview();
   select(state.current || 1);
   redraw(true);
